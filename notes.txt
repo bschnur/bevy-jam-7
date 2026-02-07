@@ -1,0 +1,38 @@
+computer keeps turning off (eg when player progresses to certain point in email)
+	-> subsequent times introduce additional environmental effects:
+		-> light flickering
+		-> power going out (light, clock radio)
+		-> radio starts playing creepy music / whispers
+teeth falling out
+	-> get in way of typing -> have to be moved/removed
+	-> huge outpouring of teeth later / periodically in increasing volume
+keyboard keys popping off
+	-> have to be replaced
+		-> click on / pick up from desk
+		-> maybe fall off desk later
+			-> have to click small area under where keycap was
+			-> lil player / mouse brings back later?
+			-> ALL the keys pop off in an eruption
+ghost/prompt email text starts sliding down the screen
+	-> early occurrences: reset to position after time elapsed or computer power cycle
+	-> later: stay on desk/keyboard, persisting through power cycle
+	-> laterer: ghost text character and filled text character shift out of alignment
+player shrinking to controllable character
+	-> transition out of this mode by re-arriving and typing squishes small version of player
+		-> bunch of lil players spawn later and smush -> blood all over keys
+
+cargo check
+cargo build
+cargo build --release
+cargo build --profile wasm-release
+cargo run
+
+wasm-opt -Os --output output.wasm input.wasm
+
+https://bevy.org/learn/quick-start/getting-started/setup/
+Shipping your game with dynamic linking enabled is not recommended
+because it requires you to include libbevy_dylib alongside your game,
+it prevents certain optimizations, and can increase the size of your game.
+If you remove the dynamic_linking feature, your game executable can run standalone.
+
+cargo test --doc
