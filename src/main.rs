@@ -161,77 +161,84 @@ struct RemovalTarget(Entity);		// We can spawn a set of entities that store ids 
 
 // Sandbox systems to play in.
 
+// Utility function to spawn a message so we aren't repeating ourselves quite so much.
+
+fn spawn_sent_message(
+	commands: &mut Commands,
+	text: &'static str,
+	mine: bool,
+	preserve_on_clear: bool,
+) {
+	// spawn_sent_message_raw(
+	// 	commands,
+	// 	text,
+	// 	if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR },
+	// 	if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },
+	// 	if mine { HDir::RIGHT } else { HDir::LEFT },
+	// 	preserve_on_clear
+	// );
+
+	let mut id = commands.spawn((
+		SentMessage {
+			text: Text(String::from(text)),
+			font_color: FontColor(if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR }),
+			bkg_color: BkgColor(if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },),
+			side: Side(if mine { HDir::RIGHT } else { HDir::LEFT })
+		},
+	));
+	if preserve_on_clear {
+		id.insert(PreserveOnClear);
+	}
+}
+
+// Could have implemented as two functions - in fact here they are, the original draft:
+fn _spawn_sent_message_low_level(
+	commands: &mut Commands,
+	text: &'static str,
+	font_color: Color,
+	bkg_color: Color,
+	side: HDir,
+	preserve_on_clear: bool,
+) {
+	let mut id = commands.spawn((
+		SentMessage {
+			text: Text(String::from(text)),
+			font_color: FontColor(font_color),
+			bkg_color: BkgColor(bkg_color),
+			side: Side(side)
+		},
+	));
+	if preserve_on_clear {
+		id.insert(PreserveOnClear);
+	}
+}
+fn _spawn_sent_message_high_level(
+	commands: &mut Commands,
+	text: &'static str,
+	mine: bool,
+	preserve_on_clear: bool,
+) {
+	_spawn_sent_message_low_level(
+		commands,
+		text,
+		if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR },
+		if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },
+		if mine { HDir::RIGHT } else { HDir::LEFT },
+		preserve_on_clear
+	);
+}
+
 fn sandbox_setup(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands) {
 	println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
 	
-	// commands.spawn((
-	// 	Text(String::from("Signing off for today")),
-	// 	FontColor(DEFAULT_MY_TEXT_COLOR),
-	// 	BkgColor(DEFAULT_MY_BUBBLE_COLOR),
-	// 	Side(HDir::RIGHT)
-	// ));
+	spawn_sent_message(&mut commands, "Signing off for today", true, true);
 
-	// let id = commands.spawn((
-	commands.spawn((
-		SentMessage {
-			text: Text(String::from("Signing off for today")),
-			font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
-			bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
-			side: Side(HDir::RIGHT)
-		},
-		PreserveOnClear,
-	));
-	// )).id();
-	// commands.spawn(RemovalTarget(id));
+	spawn_sent_message(&mut commands, "Roger. See you tomorrow.", false, true);
+	spawn_sent_message(&mut commands, "FYI, you're leading standups.", false, true);
 
-	// let id = commands.spawn(SentMessage {
-	commands.spawn((
-		SentMessage {
-			text: Text(String::from("Roger. See you tomorrow.")),
-			font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
-			bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
-			side: Side(HDir::LEFT)
-		},
-		PreserveOnClear,
-	));
-	// }).id();
-	// commands.spawn(RemovalTarget(id));
-
-	// let id = commands.spawn(SentMessage {
-	commands.spawn((
-		SentMessage {
-			text: Text(String::from("FYI, you're leading standups.")),
-			font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
-			bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
-			side: Side(HDir::LEFT)
-		},
-		PreserveOnClear,
-	));
-	// }).id();
-	// commands.spawn(RemovalTarget(id));
+	spawn_sent_message(&mut commands, "Ok, on it", true, true);
 	
-	// let id = commands.spawn(SentMessage {
-	commands.spawn((
-		SentMessage {
-			text: Text(String::from("Ok, on it")),
-			font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
-			bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
-			side: Side(HDir::RIGHT)
-		},
-		// PreserveOnClear,
-	));
-	// }).id();
-	// commands.spawn(RemovalTarget(id));
-
-	// let id = commands.spawn(SentMessage {
-	commands.spawn(SentMessage {
-		text: Text(String::from("You got this! 😎")),
-		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
-		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
-		side: Side(HDir::LEFT)
-	});
-	// }).id();
-	// commands.spawn(RemovalTarget(id));
+	spawn_sent_message(&mut commands, "You got this! 😎", false, true);
 
 	// commands.remove_resource::<DarkModeEnabled>(); // This will cause a panic.
 }
