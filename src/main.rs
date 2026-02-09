@@ -46,6 +46,15 @@ const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
 const DEFAULT_KEY_BUTTON_SIZE: Vec2 = Vec2::new(20., 20.);
 const DEFAULT_KEY_BUTTON_SPACING: f32 = 4.;
 
+// Keybd Layout
+
+// 	suggestions
+// Q W E R T Y U I O P
+// A S D F G H J K L
+// ⇧ X C V B N M ⇐
+// 123 😊 space ↩
+// ⨁			🎙
+
 // Notes on entities needed:
 // messages, keyboard, drafting area, ..., Read/Delivered/Sent, time horizontal rule, key, finger, tooth, ghost text?, individual letters?
 
