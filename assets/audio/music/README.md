@@ -14,7 +14,7 @@ I request the following:
 Ostensibly you retrieved this repo the first time a la:
 
 ```bash
-git clone git@github.com:bschnur/bevy-jam-7.git [optional-directory-name]
+git clone https://github.com/bschnur/bevy-jam-7.git [optional-directory-name]
 ```
 
 To get the latest changes, you can run:
