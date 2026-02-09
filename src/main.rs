@@ -43,17 +43,110 @@ const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
 // The below sizes are calculated based on the virtual resolution.
 // Lots of things marked DEFAULT with the intention being they may be substituted for.
 const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
-const DEFAULT_KEY_BUTTON_SIZE: Vec2 = Vec2::new(20., 20.);
-const DEFAULT_KEY_BUTTON_SPACING: f32 = 4.;
+// const DEFAULT_KEY_SIZE: Vec2 = Vec2::new(20., 20.);
+// const DEFAULT_KEY_SPACING: f32 = 4.;
 
 // Keybd Layout
 
 // 	suggestions
-// Q W E R T Y U I O P
-// A S D F G H J K L
-// ⇧ X C V B N M ⇐
-// 123 😊 space ↩
+// Q W E R T Y U I O P			10
+// A S D F G H J K L			9
+// ⇧ X C V B N M ⇐				9 (7 + 2 special)
+// 123 😊 space ↩				4 (2 mini-special + spacebar + 1 extra-special)
 // ⨁			🎙
+
+// VIRTUAL_RESOLUTION.0 (1080) 		= 10 * DEFAULT_KEY_SIZE.0 + 9 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
+// 									= 9 * DEFAULT_KEY_SIZE.0 + 8 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_2_MARGIN
+// 									= 6 * DEFAULT_KEY_SIZE.0 + 5 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_3_INNER_MARGIN
+// 										+ 2 * DEFAULT_SPECIAL_KEY_SIZE.0 + 2 * DEFAULT_ROW_3_OUTER_MARGIN
+// 									= 2 * DEFAULT_MINI_SPECIAL_KEY_SIZE.0 + DEFAULT_SPACEBAR_SIZE.0 + DEFAULT_EX_SPECIAL_KEY_SIZE.0
+// 										+ 3 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_4_MARGIN
+
+// Assume:
+// 			DEFAULT_ROW_1_MARGIN = DEFAULT_ROW_3_OUTER_MARGIN = DEFAULT_ROW_4_MARGIN
+// 			DEFAULT_EX_SPECIAL_KEY_SIZE.0 = DEFAULT_KEY_SIZE.0 + DEFAULT_ROW_3_INNER_MARGIN + DEFAULT_SPECIAL_KEY_SIZE.0
+// 			
+
+// Rewriting the above:
+
+// VIRTUAL_RESOLUTION.0 (1080) 		= 10 * DEFAULT_KEY_SIZE.0 + 9 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
+// 									= 9 * DEFAULT_KEY_SIZE.0 + 8 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_2_MARGIN
+// 									= 6 * DEFAULT_KEY_SIZE.0 + 5 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_3_INNER_MARGIN
+// 										+ 2 * DEFAULT_SPECIAL_KEY_SIZE.0 + 2 * DEFAULT_ROW_1_MARGIN
+// 									= 2 * DEFAULT_MINI_SPECIAL_KEY_SIZE.0 + DEFAULT_SPACEBAR_SIZE.0 + (DEFAULT_KEY_SIZE.0 + DEFAULT_ROW_3_INNER_MARGIN + DEFAULT_SPECIAL_KEY_SIZE.0)
+// 										+ 3 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
+
+// Rename for calculation:
+// 				DEFAULT_KEY_SIZE.0 => 					X
+// 				DEFAULT_KEY_SPACING => 					Y
+// 				DEFAULT_ROW_1_MARGIN =>					Z
+//				DEFAULT_ROW_2_MARGIN => 				A
+// 				DEFAULT_ROW_3_INNER_MARGIN => 			B
+// 				DEFAULT_SPECIAL_KEY_SIZE.0 => 			C
+// 				DEFAULT_MINI_SPECIAL_KEY_SIZE.0 => 		D
+// 				DEFAULT_SPACEBAR_SIZE.0 => 				E
+
+
+// VIRTUAL_RESOLUTION.0 (1080) 		= 10X + 9Y + 2Z
+// 									= 9X + 8Y + 2A
+// 									= 7X + 6Y + 2B + 2C + 2Z
+// 									= 3D + E + X + B + 3Y + 2Z
+
+// Comparing the right side equivalent sums above,
+// AND assuming:
+
+//	2D + Y = C + B + X
+// X = 90
+// Y = 16
+// Z = 18
+// => 2D + 16 = C + B + 90	=>	2D = C + B + 74
+
+// 	=>	1080 = 9(90) + 8(16) + 2A	=>	1080 = 810 + 128 + 2A	=>	142 = 2A	=>												A = 71
+// 	=>	1080 = 7(90) + 6(16) + 2B + 2C + 2(18)	=>	1080 = 630 + 96 + 2(B + C) + 36	=>	2(B + C) = 318	=>	B + C = 159
+
+// 	=>	2D = 159 + 74	=>																										D = 116.5
+
+// 	=>	1080 = 3(116.5) + E + 90 + B + 3(16) + 2(18)	=>	1080 = 349.5 + E + 90 + B + 48 + 36		=>	556.5 = E + B
+// 	=>	556.5 - E + C = 159		=>	C + 397.5 = E
+
+// 7X + 6Y + 2B + 2C + 2Z = 3D + E + X + B + 3Y + 2Z
+// 6X + 3Y + B + 2C = 3D + E
+// 6(90) + 3(16) + B + 2C = 3(116.5) + E
+// 540 + 48 + B + 2C = 349.5 + E
+// 238.5 + B + 2C = E	=>	238.5 + B + 2C = (C + 397.5)	=>	B + C = 159		fuck.
+
+// B + C = 159
+// B + E = 556.5
+// E - C = 397.5
+
+// Let's assume C = D + 5.5 = 122.
+
+// B + 122 = 159		=>		B = 37
+// B + E = 556.5		=>		E = 519.5
+// E - 118.5 = 397.5	=>		519.5 - 122 = 397.5 (consistent).
+
+// That gives us:
+
+// 				DEFAULT_KEY_SIZE.0 => 					90
+// 				DEFAULT_KEY_SPACING => 					16
+// 				DEFAULT_ROW_1_MARGIN =>					18
+//				DEFAULT_ROW_2_MARGIN => 				71
+// 				DEFAULT_ROW_3_INNER_MARGIN => 			37
+// 				DEFAULT_SPECIAL_KEY_SIZE.0 => 			122
+// 				DEFAULT_MINI_SPECIAL_KEY_SIZE.0 => 		116.5
+// 				DEFAULT_SPACEBAR_SIZE.0 => 				519.5
+
+const DEFAULT_KEY_HEIGHT: f32 = 116.;
+
+const DEFAULT_KEY_SIZE: Vec2 = Vec2::new(90., DEFAULT_KEY_HEIGHT);
+const DEFAULT_SPECIAL_KEY_SIZE: Vec2 = Vec2::new(122., DEFAULT_KEY_HEIGHT);
+const DEFAULT_MINI_SPECIAL_KEY_SIZE: Vec2 = Vec2::new(116.5, DEFAULT_KEY_HEIGHT);
+const DEFAULT_SPACEBAR_SIZE: Vec2 = Vec2::new(519.5, DEFAULT_KEY_HEIGHT);
+const DEFAULT_KEY_SPACING: f32 = 16.;
+
+const DEFAULT_ROW_1_MARGIN: f32 = 18.;
+const DEFAULT_ROW_2_MARGIN: f32 = 71.;
+const DEFAULT_ROW_3_INNER_MARGIN: f32 = 37.;
 
 // Notes on entities needed:
 // messages, keyboard, drafting area, ..., Read/Delivered/Sent, time horizontal rule, key, finger, tooth, ghost text?, individual letters?
