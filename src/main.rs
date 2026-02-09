@@ -84,13 +84,13 @@ fn main() {
 		.insert_resource(ClearColor(DEFAULT_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
 
         // .add_systems(PreStartup, pre_startup)
-        .add_systems(Startup, (setup_sandbox, setup).chain())
+        .add_systems(Startup, (sandbox_setup, setup).chain())
         // .add_systems(PostStartup, post_startup)
 		// .add_systems(First, first)
         // .add_systems(PreUpdate, pre_update)
         // .add_systems(StateTransition, state_transition)
         .add_systems(FixedUpdate, (resolve_velocity, advance_fever).chain()) // framerate-independent, predictable simulation
-		.add_systems(Update, (update_sandbox, update_finger).chain()) // visuals, user input, and per-frame logic
+		.add_systems(Update, (sandbox_update, sandbox_clear_sent_messages, sandbox_process_removal_targets, update_finger).chain()) // visuals, user input, and per-frame logic
         // .add_systems(PostUpdate, post_update)
         // .add_systems(Last, last)
 
@@ -118,7 +118,7 @@ struct FontColor(Color);		// Put this in a tuple struct with the string?
 #[derive(Component)]
 struct BkgColor(Color);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum HDir { LEFT, RIGHT, }
 #[derive(Component)]
 struct Side(HDir);
@@ -130,6 +130,19 @@ struct SentMessage {
 	bkg_color: BkgColor,
 	side: Side,
 }
+
+#[derive(Component)]
+struct PreserveOnClear;		// Add this along with other components/bundles when spawning, and use to filter out removal targets.
+
+#[derive(Component)]
+struct RemovalTarget(Entity);		// We can spawn a set of entities that store ids of other entities.
+									// An example shows how to store ids in these at spawn
+									// and retrieve them later to despawn target entities;
+									// in our case I think we'd rather filter using With<PreserveOnClear>
+									// but this may be a helpful paradigm for more dynamic removal.
+									// I.e., we can spawn a RemovalTarget with the id of any entity
+									// to then (in a predetermined phase of the loop / schedule) remove them,
+									// much like a queue_free in Godot.
 
 // #[derive(Component)]
 // struct Mine(bool);	// sender/ownership ought determine Side and default colors...
@@ -148,7 +161,7 @@ struct SentMessage {
 
 // Sandbox systems to play in.
 
-fn setup_sandbox(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands) {
+fn sandbox_setup(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands) {
 	println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
 	
 	// commands.spawn((
@@ -158,39 +171,67 @@ fn setup_sandbox(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands
 	// 	Side(HDir::RIGHT)
 	// ));
 
-	commands.spawn(SentMessage {
-		text: Text(String::from("Signing off for today")),
-		font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
-		bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
-		side: Side(HDir::RIGHT)
-	});
+	// let id = commands.spawn((
+	commands.spawn((
+		SentMessage {
+			text: Text(String::from("Signing off for today")),
+			font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
+			bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
+			side: Side(HDir::RIGHT)
+		},
+		PreserveOnClear,
+	));
+	// )).id();
+	// commands.spawn(RemovalTarget(id));
 
-	commands.spawn(SentMessage {
-		text: Text(String::from("Roger. See you tomorrow.")),
-		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
-		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
-		side: Side(HDir::LEFT)
-	});
-	commands.spawn(SentMessage {
-		text: Text(String::from("FYI, you're leading standups.")),
-		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
-		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
-		side: Side(HDir::LEFT)
-	});
+	// let id = commands.spawn(SentMessage {
+	commands.spawn((
+		SentMessage {
+			text: Text(String::from("Roger. See you tomorrow.")),
+			font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
+			bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
+			side: Side(HDir::LEFT)
+		},
+		PreserveOnClear,
+	));
+	// }).id();
+	// commands.spawn(RemovalTarget(id));
+
+	// let id = commands.spawn(SentMessage {
+	commands.spawn((
+		SentMessage {
+			text: Text(String::from("FYI, you're leading standups.")),
+			font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
+			bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
+			side: Side(HDir::LEFT)
+		},
+		PreserveOnClear,
+	));
+	// }).id();
+	// commands.spawn(RemovalTarget(id));
 	
-	commands.spawn(SentMessage {
-		text: Text(String::from("Ok, on it")),
-		font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
-		bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
-		side: Side(HDir::RIGHT)
-	});
+	// let id = commands.spawn(SentMessage {
+	commands.spawn((
+		SentMessage {
+			text: Text(String::from("Ok, on it")),
+			font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
+			bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
+			side: Side(HDir::RIGHT)
+		},
+		// PreserveOnClear,
+	));
+	// }).id();
+	// commands.spawn(RemovalTarget(id));
 
+	// let id = commands.spawn(SentMessage {
 	commands.spawn(SentMessage {
 		text: Text(String::from("You got this! 😎")),
 		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
 		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
 		side: Side(HDir::LEFT)
 	});
+	// }).id();
+	// commands.spawn(RemovalTarget(id));
 
 	// commands.remove_resource::<DarkModeEnabled>(); // This will cause a panic.
 }
@@ -227,18 +268,51 @@ fn setup_sandbox(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands
 // 	println!();
 // }
 
-fn update_sandbox(
+fn sandbox_update(
 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
-	msgs: Query<(&Text, &FontColor, &BkgColor, &Side)>
+	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
+	mut commands: Commands
 ) {
 	if dark_mode_enabled.0 {
 		dark_mode_enabled.0 = false;
 		println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
 
-		for (text, color, bkg, side) in &msgs {
+		for (id, text, color, bkg, side) in &msgs {
 			println!("\nText: {}\nFontColor: {:#?}\nBkgColor: {:#?}\nScreenSide: {:?}", text.0, color.0, bkg.0, side.0);
+
+			if side.0 == HDir::RIGHT {
+				commands.spawn(RemovalTarget(id));
+			}
 		}
 	}
+}
+
+// A system that despawns all entities with a Text component (for now, that's just SentMessage)
+// unless they possess a PreserveOnClear component.
+fn sandbox_clear_sent_messages(mut commands: Commands, msgs: Query<(Entity, &Text), Without<PreserveOnClear>>) {
+    for (id, text) in &msgs {
+        println!("\nRemoving message with text: {}", text.0);
+        commands.entity(id).despawn();
+    }
+}
+
+// A method of removal that can be more dynamically targeted - does not respect PreserveOnClear.
+fn sandbox_process_removal_targets(mut commands: Commands, targets: Query<(Entity, &RemovalTarget)>) {
+    for (removal_target, id) in &targets {
+		// Check first if the entity is still valid / not despawned.
+		// commands.get_entity(Entity) will return (in a Result)
+		// the specific entity's commands object.
+		// Inner portion of Result pattern marked mutable because needed to call despawn().
+		if let Ok(mut entity_commands) = commands.get_entity(id.0) {
+			entity_commands.despawn();
+			println!("\nRemoved message entity with id: {}", id.0);
+		} else {
+			println!("\nSkipped removal of entity with id: {}", id.0);
+		}
+		// Either way, remove the targeting entity as its purpose is complete.
+		commands.entity(removal_target).despawn();
+        println!("\nRemoved targeting entity with id: {}", removal_target);
+    }
 }
 
 // Below is an example of retrieving components in a mutable state.
