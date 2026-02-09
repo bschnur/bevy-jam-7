@@ -10,6 +10,12 @@ You're not feeling
 
 Something is WRONG
 
+## Credits
+
+Martin Bayer: concept/design, original music, music and sound curation?
+
+Ben Schnur: concept/design, programming, art, sound curation?
+
 ## License
 
 This game jam entry is free and open source and is dual-licensed under either:
