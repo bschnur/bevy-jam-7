@@ -21,6 +21,76 @@ player shrinking to controllable character
 	-> transition out of this mode by re-arriving and typing squishes small version of player
 		-> bunch of lil players spawn later and smush -> blood all over keys
 
+	- keys
+		- slide around (letters too, disconnect from keys)
+		- slide under each other (and maybe pressing one passes through to the other)
+		- change size
+		- colors changing
+	- statically / oneshot
+	- continually shifting
+	- toggling to light/dark mode
+		- along with a color set that as a result makes text illegible/invisible
+	- teeth
+	- sounds:
+		- key press sound changes:
+			- modulating continuously
+			- base sound changes
+				- abruptly
+				- only sometimes
+					- phone screen smunching sound
+					- squish
+					- yelp
+			- base sound slowly morphs into more unsettling sound/version
+	- "hurt" sound/visual
+		- at first, when wrong key hit
+		- later: randomly? always (during a particular fever event)?
+	- screen turns off
+		- old school / tube tv style
+		- either way: resets typing progress
+	- blink
+		- could be used to reset some effects
+		- when fever event: resets typing progress
+		- when fever event: typed words change to gibberish, or an inappropriate gushy or hateful message
+	- autocorrect
+	- ghost text
+		- move/slide/rotate
+		- other effects like wiggle / double vision
+	- failure to send
+		- shake message bubble
+	- bubbles
+		- fall off screen
+		- rotate, slide, change color
+	- screen cracks
+
+	- audio
+		- voice
+			- player character reactions a la:
+				- that cant be real
+				- oh fuck
+				- nooooooo
+				- what?
+		- key press sounds (see abopve)
+		- low-key theme, swells? into unsettling land; abrupt shifts
+			- if unsettling music matches tempo / aligns with main theme, can sync / play both at start and adjust volume
+			- abrupt shift CAN be an abrupt volume shift a la the gradual introduction described, BUT
+				- might be accompanied by a sound effects
+					- just make sure you're either:
+						- fine with them occuring over any part of the song, OR
+						- have a part of the song in mind (or multiple candidate timestamps)
+							that you want to instantaneously jump to
+				- might jump us to the beginning (or a specific spot in) a different track (or the playing track)
+
+		- any of the music that can line up, great for swapping between or shifting slowly
+
+		- BIG WISH / POST JAM: you might have multiple "bundles" of music tracks, that we switch between
+			- each bundle (from the listener's perspective) is a "track" that changes dynamically
+	
+	FOR THE JAM:
+		- low key theme to start
+		- one (or more) more unsettling version that shares its tempo, tracking etc.
+
+		BONUS:	- VERY unsettling version OR other track entirely.
+
 cargo check
 cargo build
 cargo build --release
