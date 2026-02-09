@@ -43,8 +43,6 @@ const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
 // The below sizes are calculated based on the virtual resolution.
 // Lots of things marked DEFAULT with the intention being they may be substituted for.
 const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
-// const DEFAULT_KEY_SIZE: Vec2 = Vec2::new(20., 20.);
-// const DEFAULT_KEY_SPACING: f32 = 4.;
 
 // Keybd Layout
 
@@ -54,87 +52,6 @@ const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
 // ⇧ X C V B N M ⇐				9 (7 + 2 special)
 // 123 😊 space ↩				4 (2 mini-special + spacebar + 1 extra-special)
 // ⨁			🎙
-
-// VIRTUAL_RESOLUTION.0 (1080) 		= 10 * DEFAULT_KEY_SIZE.0 + 9 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
-// 									= 9 * DEFAULT_KEY_SIZE.0 + 8 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_2_MARGIN
-// 									= 6 * DEFAULT_KEY_SIZE.0 + 5 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_3_INNER_MARGIN
-// 										+ 2 * DEFAULT_SPECIAL_KEY_SIZE.0 + 2 * DEFAULT_ROW_3_OUTER_MARGIN
-// 									= 2 * DEFAULT_MINI_SPECIAL_KEY_SIZE.0 + DEFAULT_SPACEBAR_SIZE.0 + DEFAULT_EX_SPECIAL_KEY_SIZE.0
-// 										+ 3 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_4_MARGIN
-
-// Assume:
-// 			DEFAULT_ROW_1_MARGIN = DEFAULT_ROW_3_OUTER_MARGIN = DEFAULT_ROW_4_MARGIN
-// 			DEFAULT_EX_SPECIAL_KEY_SIZE.0 = DEFAULT_KEY_SIZE.0 + DEFAULT_ROW_3_INNER_MARGIN + DEFAULT_SPECIAL_KEY_SIZE.0
-// 			
-
-// Rewriting the above:
-
-// VIRTUAL_RESOLUTION.0 (1080) 		= 10 * DEFAULT_KEY_SIZE.0 + 9 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
-// 									= 9 * DEFAULT_KEY_SIZE.0 + 8 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_2_MARGIN
-// 									= 6 * DEFAULT_KEY_SIZE.0 + 5 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_3_INNER_MARGIN
-// 										+ 2 * DEFAULT_SPECIAL_KEY_SIZE.0 + 2 * DEFAULT_ROW_1_MARGIN
-// 									= 2 * DEFAULT_MINI_SPECIAL_KEY_SIZE.0 + DEFAULT_SPACEBAR_SIZE.0 + (DEFAULT_KEY_SIZE.0 + DEFAULT_ROW_3_INNER_MARGIN + DEFAULT_SPECIAL_KEY_SIZE.0)
-// 										+ 3 * DEFAULT_KEY_SPACING + 2 * DEFAULT_ROW_1_MARGIN
-
-// Rename for calculation:
-// 				DEFAULT_KEY_SIZE.0 => 					X
-// 				DEFAULT_KEY_SPACING => 					Y
-// 				DEFAULT_ROW_1_MARGIN =>					Z
-//				DEFAULT_ROW_2_MARGIN => 				A
-// 				DEFAULT_ROW_3_INNER_MARGIN => 			B
-// 				DEFAULT_SPECIAL_KEY_SIZE.0 => 			C
-// 				DEFAULT_MINI_SPECIAL_KEY_SIZE.0 => 		D
-// 				DEFAULT_SPACEBAR_SIZE.0 => 				E
-
-
-// VIRTUAL_RESOLUTION.0 (1080) 		= 10X + 9Y + 2Z
-// 									= 9X + 8Y + 2A
-// 									= 7X + 6Y + 2B + 2C + 2Z
-// 									= 3D + E + X + B + 3Y + 2Z
-
-// Comparing the right side equivalent sums above,
-// AND assuming:
-
-//	2D + Y = C + B + X
-// X = 90
-// Y = 16
-// Z = 18
-// => 2D + 16 = C + B + 90	=>	2D = C + B + 74
-
-// 	=>	1080 = 9(90) + 8(16) + 2A	=>	1080 = 810 + 128 + 2A	=>	142 = 2A	=>												A = 71
-// 	=>	1080 = 7(90) + 6(16) + 2B + 2C + 2(18)	=>	1080 = 630 + 96 + 2(B + C) + 36	=>	2(B + C) = 318	=>	B + C = 159
-
-// 	=>	2D = 159 + 74	=>																										D = 116.5
-
-// 	=>	1080 = 3(116.5) + E + 90 + B + 3(16) + 2(18)	=>	1080 = 349.5 + E + 90 + B + 48 + 36		=>	556.5 = E + B
-// 	=>	556.5 - E + C = 159		=>	C + 397.5 = E
-
-// 7X + 6Y + 2B + 2C + 2Z = 3D + E + X + B + 3Y + 2Z
-// 6X + 3Y + B + 2C = 3D + E
-// 6(90) + 3(16) + B + 2C = 3(116.5) + E
-// 540 + 48 + B + 2C = 349.5 + E
-// 238.5 + B + 2C = E	=>	238.5 + B + 2C = (C + 397.5)	=>	B + C = 159		fuck.
-
-// B + C = 159
-// B + E = 556.5
-// E - C = 397.5
-
-// Let's assume C = D + 5.5 = 122.
-
-// B + 122 = 159		=>		B = 37
-// B + E = 556.5		=>		E = 519.5
-// E - 118.5 = 397.5	=>		519.5 - 122 = 397.5 (consistent).
-
-// That gives us:
-
-// 				DEFAULT_KEY_SIZE.0 => 					90
-// 				DEFAULT_KEY_SPACING => 					16
-// 				DEFAULT_ROW_1_MARGIN =>					18
-//				DEFAULT_ROW_2_MARGIN => 				71
-// 				DEFAULT_ROW_3_INNER_MARGIN => 			37
-// 				DEFAULT_SPECIAL_KEY_SIZE.0 => 			122
-// 				DEFAULT_MINI_SPECIAL_KEY_SIZE.0 => 		116.5
-// 				DEFAULT_SPACEBAR_SIZE.0 => 				519.5
 
 const DEFAULT_KEY_HEIGHT: f32 = 116.;
 
@@ -147,58 +64,204 @@ const DEFAULT_KEY_SPACING: f32 = 16.;
 const DEFAULT_ROW_1_MARGIN: f32 = 18.;
 const DEFAULT_ROW_2_MARGIN: f32 = 71.;
 const DEFAULT_ROW_3_INNER_MARGIN: f32 = 37.;
+const DEFAULT_ROW_3_OUTER_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
+const DEFAULT_ROW_4_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
 
 // Notes on entities needed:
-// messages, keyboard, drafting area, ..., Read/Delivered/Sent, time horizontal rule, key, finger, tooth, ghost text?, individual letters?
+// messages, keyboard, drafting area, ..., Read/Delivered/Sent, timestamp horizontal rule,
+// key, finger, tooth, ghost text?, individual letters?
 
 // Refresh on usefulness/need for bundles vs tupled components.
 
 fn main() {
 	App::new()
 		.add_plugins(DefaultPlugins)
+
 		.insert_resource(FeverLevel(0))
-		.insert_resource(ClearColor(DEFAULT_BKG_COLOR))
-		.add_systems(Startup, setup)
-		.add_systems(FixedUpdate, (apply_velocity, move_finger, advance_fever).chain())
-		// .add_systems(Update, update_hud) // something solely display related? check what is considered good practice to do in (varied-length) update
+		// .insert_resource(DarkModeEnabled(true))	// Unnecessary because DarkModeEnabled implements Default.
+		.init_resource::<DarkModeEnabled>()
+
+		.insert_resource(ClearColor(DEFAULT_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
+
+        // .add_systems(PreStartup, pre_startup)
+        .add_systems(Startup, (setup_sandbox, setup).chain())
+        // .add_systems(PostStartup, post_startup)
+		// .add_systems(First, first)
+        // .add_systems(PreUpdate, pre_update)
+        // .add_systems(StateTransition, state_transition)
+        .add_systems(FixedUpdate, (resolve_velocity, advance_fever).chain()) // framerate-independent, predictable simulation
+		.add_systems(Update, (update_sandbox, update_finger).chain()) // visuals, user input, and per-frame logic
+        // .add_systems(PostUpdate, post_update)
+        // .add_systems(Last, last)
+
 		// .add_observer(play_keypress_sound)
 		.run();
 }
 
-enum ColorMode {
-	LIGHT,
-	DARK,
+// This resource tracks the currently selected color mode (i.e. light, dark).
+#[derive(Resource)]
+struct DarkModeEnabled(bool);	// Can we set up an observer for when this changes?
+impl Default for DarkModeEnabled {
+	fn default() -> Self {
+		Self(true)
+	}
 }
 
-// This resource tracks the currently selected color mode (i.e. light, dark).
-#[derive(Resource, Deref, DerefMut)]
-struct CurrentMode(ColorMode);
-
-
-
-
+// Components of a (past) text message entity: Text, FontColor, BkgColor, Side.
 
 #[derive(Component)]
 struct Text(String);
 
-enum Side {
-	LEFT,
-	RIGHT,
-}
+#[derive(Component)]
+struct FontColor(Color);		// Put this in a tuple struct with the string?
 
 #[derive(Component)]
-struct Alignment(Side);
+struct BkgColor(Color);
 
-fn setup(mut commands: Commands) {
-	// commands.spawn((Text(String::from("Reminder, you're leading standups tomorrow.")), Alignment(Side::LEFT)));
-	// commands.spawn((Text(String::from("No excuses")), Alignment(Side::LEFT)));
+#[derive(Debug)]
+enum HDir { LEFT, RIGHT, }
+#[derive(Component)]
+struct Side(HDir);
+
+#[derive(Bundle)]
+struct SentMessage {
+	text: Text,
+	font_color: FontColor,
+	bkg_color: BkgColor,
+	side: Side,
+}
+
+// #[derive(Component)]
+// struct Mine(bool);	// sender/ownership ought determine Side and default colors...
+
+// Maybe a function that we can pass 'commands' into that we call from setup / system-function,
+// that spawns a msg according to a string [slice ref] and a bool (is_mine).
+
+// And maybe the current my/their colors are Resources just like DarkModeEnabled, along with other global state.
+
+// Might want to store a global message index to order them above the typing area -
+// simply increment when we spawn one, and reset if resetting the playing field.
+// Would be ideal to have this happen automatically on spawning or creating one, but
+// (1) this likely requires use of a ctor which we haven't had to do for components or bundles yet, and
+// (2) then we also have to worry about dangling... messages. Damn it, still have to worry about that.
+//  Well, for (2) we can just run a query when we clear the field and nuke all of them whose index is above X.
+
+// Sandbox systems to play in.
+
+fn setup_sandbox(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands) {
+	println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
+	
+	// commands.spawn((
+	// 	Text(String::from("Signing off for today")),
+	// 	FontColor(DEFAULT_MY_TEXT_COLOR),
+	// 	BkgColor(DEFAULT_MY_BUBBLE_COLOR),
+	// 	Side(HDir::RIGHT)
+	// ));
+
+	commands.spawn(SentMessage {
+		text: Text(String::from("Signing off for today")),
+		font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
+		bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
+		side: Side(HDir::RIGHT)
+	});
+
+	commands.spawn(SentMessage {
+		text: Text(String::from("Roger. See you tomorrow.")),
+		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
+		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
+		side: Side(HDir::LEFT)
+	});
+	commands.spawn(SentMessage {
+		text: Text(String::from("FYI, you're leading standups.")),
+		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
+		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
+		side: Side(HDir::LEFT)
+	});
+	
+	commands.spawn(SentMessage {
+		text: Text(String::from("Ok, on it")),
+		font_color: FontColor(DEFAULT_MY_TEXT_COLOR),
+		bkg_color: BkgColor(DEFAULT_MY_BUBBLE_COLOR),
+		side: Side(HDir::RIGHT)
+	});
+
+	commands.spawn(SentMessage {
+		text: Text(String::from("You got this! 😎")),
+		font_color: FontColor(DKMODE_THEIR_TEXT_COLOR),
+		bkg_color: BkgColor(DEFAULT_THEIR_BUBBLE_COLOR),
+		side: Side(HDir::LEFT)
+	});
+
+	// commands.remove_resource::<DarkModeEnabled>(); // This will cause a panic.
+}
+
+// Below: an example of querying via parameters that may or may not be present on each matching entity.
+
+// fn output_players(players: Query<(&Name, &Hp, Option<&Mp>)>) {
+// 	println!("All players:");
+// 	for (name, hp, mp) in &players {
+// 		print!("Name: {}, HP: {}", name.0, hp.0);
+// 		match mp {
+// 			Some(v) => println!(", MP: {}", v.0),
+// 			None => println!(),
+// 		}
+// 	}
+// 	println!();
+// }
+
+// Below: Examples of filtering using With and Without:
+
+// fn output_wizards(wizards: Query<(&Name, &Hp), With<Mp>>) {	// More performant if we don't need to access MP component.
+// 	println!("All wizards:");
+// 	for (name, hp) in &wizards {
+// 		println!("Name: {}, HP: {}", name.0, hp.0);
+// 	}
+// 	println!();
+// }
+
+// fn output_soldiers(soldiers: Query<(&Name, &Hp), Without<Mp>>) {
+// 	println!("All soldiers:");
+// 	for (name, hp) in &soldiers {
+// 		println!("Name: {}, HP: {}", name.0, hp.0);
+// 	}
+// 	println!();
+// }
+
+fn update_sandbox(
+	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
+	msgs: Query<(&Text, &FontColor, &BkgColor, &Side)>
+) {
+	if dark_mode_enabled.0 {
+		dark_mode_enabled.0 = false;
+		println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
+
+		for (text, color, bkg, side) in &msgs {
+			println!("\nText: {}\nFontColor: {:#?}\nBkgColor: {:#?}\nScreenSide: {:?}", text.0, color.0, bkg.0, side.0);
+		}
+	}
+}
+
+// Below is an example of retrieving components in a mutable state.
+// fn mut_update_sandbox(
+// 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
+// 	mut msgs: Query<(&Text, &mut FontColor)>
+// ) {
+// 	println!("\nChanging font color");
+// 	for (text, mut color) in &mut msgs {
+// 		color.0 = Color::BLACK;
+// 		println!("\nText: {}\nFontColor: {:#?}", text.0, color.0);
+// 	}
+// }
+
+fn setup() {
+
 }
 
 // Update transforms based on linear [and angular] velocity of entities such as roaming keys, falling teeth, sliding/melting letters. 
-fn apply_velocity() {}
+fn resolve_velocity() {}
 
 // Move the finger/hand shadow/silhouette/sprite to track the cursor (or move elsewise when it doesn't).
-fn move_finger() {}
+fn update_finger() {}
 
 // This resource tracks the player's progress through feverish events.
 #[derive(Resource)]
@@ -222,11 +285,12 @@ fn advance_fever(mut fever_level: ResMut<FeverLevel>) {
 				// Also trigger feverish event 0.
 			}
 		}
+		1 => {}
 		_ => {}
 	}
 }
 
-// fn output_txts (query: Query<&Text, With<Alignment>>) {
+// fn output_txts (query: Query<&MessageText, With<Alignment>>) {
 // 	// for txt in query.
 // }
 
