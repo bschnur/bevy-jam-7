@@ -166,9 +166,6 @@ struct KeyTap {
 fn on_key_pressed(event: On<KeyTap>) {
 	println!("Key pressed: {}", event.glyph);
 	// TODO Play sound
-	
-	// TODO: somewhere else - when a key is tapped/clicked:
-	// commands.trigger(KeyTap { glyph: 'a' });
 }
 
 fn on_dark_mode_enabled_changed(dark_mode_enabled: Res<DarkModeEnabled>, mut color_scheme: ResMut<ColorScheme>) {
@@ -193,22 +190,22 @@ fn on_dark_mode_enabled_changed(dark_mode_enabled: Res<DarkModeEnabled>, mut col
 // For now, the only entities with Text are those created via SentMessageBundle.
 // If that changes, we will need to make this filter more specific.
 fn update_sent_message_colors(
-	mut msgs: Query<(&mut FontColor, &mut BkgColor, &Mine), With<Text>>,
+	mut msgs: Query<(&mut FontColor, &mut BkgColor, &IsMine), With<Text>>,
 	color_scheme: Res<ColorScheme>,
 ) {
-	for (mut font_color, mut bkg_color, mine) in &mut msgs {
-		font_color.0 = if mine.0 { color_scheme.my_text_color } else { color_scheme.their_text_color };
-		bkg_color.0 = if mine.0 { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color };
+	for (mut font_color, mut bkg_color, is_mine) in &mut msgs {
+		font_color.0 = if is_mine.0 { color_scheme.my_text_color } else { color_scheme.their_text_color };
+		bkg_color.0 = if is_mine.0 { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color };
 	}
 }
 
 fn print_messages_after_dark_mode_change(
-	msgs: Query<(&Text, &FontColor, &BkgColor, &Mine, &Side, &Index)>
+	msgs: Query<(&Text, &FontColor, &BkgColor, &IsMine, &Side, &Index)>
 ) {
-	for (text, font_color, bkg_color, mine, side, index) in &msgs {
+	for (text, font_color, bkg_color, is_mine, side, index) in &msgs {
 	// for msg in &msgs {
 		// println!("\nText: {}\nFontColor: {:?}\nBkgColor: {:?}\nSide: {:?}\nIndex: {}", text.0, font_color.0, bkg_color.0, side.0, index.0);
-		print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(mine), Some(side), Some(index));
+		print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(is_mine), Some(side), Some(index));
 	}
 }
 
@@ -231,6 +228,7 @@ impl Default for DarkModeEnabled {
 }
 
 // Components of a (past) text message entity: Text, FontColor, BkgColor, Side.
+// TODO: Add an image component (look at tutorial).
 
 #[derive(Component, Debug)]
 struct Text(String);
@@ -242,7 +240,7 @@ struct FontColor(Color);
 struct BkgColor(Color);
 
 #[derive(Component, Debug)]
-struct Mine(bool);					// Is this message mine? Did I send it?
+struct IsMine(bool);					// Aka: Is this message mine? Did I send it?
 
 #[derive(Debug, PartialEq, Eq)]
 enum HDir { LEFT, RIGHT, }
@@ -275,7 +273,7 @@ struct SentMessageBundle {
 	text: Text,
 	font_color: FontColor,
 	bkg_color: BkgColor,
-	mine: Mine,
+	is_mine: IsMine,
 	side: Side,
 	index: Index,
 }
@@ -289,7 +287,7 @@ impl fmt::Display for SentMessageBundle {
 			self.text.0,
 			font_srgba.red, font_srgba.blue, font_srgba.green, font_srgba.alpha,
 			bkg_srgba.red, bkg_srgba.blue, bkg_srgba.green, bkg_srgba.alpha,
-			self.mine.0,
+			self.is_mine.0,
 			self.side.0,
 			self.index.0,
 		)
@@ -300,7 +298,7 @@ fn print_sent_message(
 	text: Option<&Text>,
 	font_color: Option<&FontColor>,
 	bkg_color: Option<&BkgColor>,
-	mine: Option<&Mine>,
+	is_mine: Option<&IsMine>,
 	side: Option<&Side>,
 	index: Option<&Index>,
 ) {
@@ -332,8 +330,8 @@ fn print_sent_message(
 		);
 	}
 
-	if let Some(mine) = mine {
-		println!("Mine? {}", mine.0);
+	if let Some(is_mine) = is_mine {
+		println!("Mine? {}", is_mine.0);
 	}
 
 	if let Some(side) = side {
@@ -368,15 +366,15 @@ fn spawn_sent_message(
 	next_index: &mut ResMut<SentMessageNextIndex>,
 	color_scheme: & Res<ColorScheme>,
 	text: &'static str,
-	mine: bool,
+	is_mine: bool,
 	preserve_on_clear: bool,
 ) {
 	let bundle = SentMessageBundle {
 		text: Text(String::from(text)),
-		font_color: FontColor(if mine { color_scheme.my_text_color } else { color_scheme.their_text_color }),
-		bkg_color: BkgColor(if mine { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color },),
-		mine: Mine(mine),
-		side: Side(if mine { HDir::RIGHT } else { HDir::LEFT }),
+		font_color: FontColor(if is_mine { color_scheme.my_text_color } else { color_scheme.their_text_color }),
+		bkg_color: BkgColor(if is_mine { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color },),
+		is_mine: IsMine(is_mine),
+		side: Side(if is_mine { HDir::RIGHT } else { HDir::LEFT }),
 		index: Index(next_index.0),
 	};
 	println!("\nSpawning message: {}", bundle);
@@ -442,7 +440,7 @@ fn sandbox_setup(
 fn sandbox_update(
 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
 	// msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
-	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Mine, &Side, &Index)>,
+	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &IsMine, &Side, &Index)>,
 	mut commands: Commands,
 	keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
@@ -450,10 +448,10 @@ fn sandbox_update(
 		dark_mode_enabled.0 = false;
 		println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
 
-		for (id, text, font_color, bkg_color, mine, side, index) in &msgs {
+		for (id, text, font_color, bkg_color, is_mine, side, index) in &msgs {
 		// for msg in &msgs {
 			// println!("\nText: {}\nFontColor: {:?}\nBkgColor: {:?}\nSide: {:?}\nIndex: {}", text.0, font_color.0, bkg_color.0, side.0, index.0);
-			print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(mine), Some(side), Some(index));
+			print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(is_mine), Some(side), Some(index));
 
 			if side.0 == HDir::RIGHT {
 				commands.spawn(RemovalTarget(id));
@@ -461,7 +459,7 @@ fn sandbox_update(
 		}
 	}
 
-	// TODO: remove test
+	// TODO: remove below test once we are firing this via actual onscreen key tap/press.
 	// Testing that observer fires:
 	if keyboard_input.just_pressed(KeyCode::KeyA) {
 		commands.trigger(KeyTap { glyph: 'a' });
