@@ -358,25 +358,11 @@ struct RemovalTarget(Entity);		// We can spawn a set of entities that store ids 
 									// to then (in a predetermined phase of the loop / schedule) remove them,
 									// much like a queue_free in Godot.
 
-// #[derive(Component)]
-// struct Mine(bool);	// sender/ownership ought determine Side and default colors...
+// Would be ideal to have index increment automatically on spawning a message (or creating its bundle), but
+// this likely requires use of a ctor which we haven't had to do for components or bundles yet, and
+// the current system (remembering to always spawn via the message spawning helper method) works ok for now.
 
-// Maybe a function that we can pass 'commands' into that we call from setup / system-function,
-// that spawns a msg according to a string [slice ref] and a bool (is_mine).
-
-// And maybe the current my/their colors are Resources just like DarkModeEnabled, along with other global state.
-
-// Might want to store a global message index to order them above the typing area -
-// simply increment when we spawn one, and reset if resetting the playing field.
-// Would be ideal to have this happen automatically on spawning or creating one, but
-// (1) this likely requires use of a ctor which we haven't had to do for components or bundles yet, and
-// (2) then we also have to worry about dangling... messages. Damn it, still have to worry about that.
-//  Well, for (2) we can just run a query when we clear the field and nuke all of them whose index is above X.
-
-// Sandbox systems to play in.
-
-// Utility function to spawn a message so we aren't repeating ourselves quite so much.
-
+// Utility function to spawn a message based on text content, sender/owner, and whether to preserve on conversation reset.
 fn spawn_sent_message(
 	commands: &mut Commands,
 	next_index: &mut ResMut<SentMessageNextIndex>,
