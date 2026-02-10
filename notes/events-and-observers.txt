@@ -1,0 +1,29 @@
+// EVENTS AND OBSERVERS
+
+// use bevy::prelude::*;
+
+// // Define a custom event
+// #[derive(Event, Debug)]
+// struct Speak {
+//     message: String,
+// }
+
+// fn main() {
+//     App::new()
+//         .add_plugins(DefaultPlugins)
+//         // Add the observer system
+//         .add_observer(on_speak)
+//         .add_systems(Startup, setup)
+//         .run();
+// }
+
+// // The observer system. The first parameter is always `On<E>`,
+// // where `E` is the event type.
+// fn on_speak(event: On<Speak>) {
+//     println!("Observer heard: {}", event.message);
+// }
+
+// fn setup(mut commands: Commands) {
+//     // Trigger the event
+//     commands.trigger(Speak { message: "Hello, Bevy!".to_string() });
+// }

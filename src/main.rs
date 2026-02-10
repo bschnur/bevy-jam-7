@@ -15,7 +15,7 @@ const DKMODE_TOP_BKG_COLOR: Color = Color::srgb(18./255., 18./255., 18./255.);		
 const DKMODE_TOP_RULE_COLOR: Color = Color::srgb(14./255., 14./255., 14./255.);			// #0E0E0E
 const DKMODE_MID_BKG_COLOR: Color = COLOR_BLACK;										// #000000 (bkg color main area)
 const DKMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
-const DKMODE_KEY_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF (glyphs on keys)
+const DKMODE_KEY_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF (symbols on keys)
 const DKMODE_KEY_COLOR: Color = Color::srgb(96./255., 96./255., 96./255.);				// #606060 (most keys)
 const DKMODE_CAPS_COLOR: Color = Color::srgb(209./255., 209./255., 209./255.);			// #D1D1D1 (shift/caps)
 const DKMODE_BKSP_COLOR: Color = Color::srgb(59./255., 59./255., 59./255.);				// #3B3B3B (123, return, bksp)
@@ -27,7 +27,7 @@ const LTMODE_TOP_BKG_COLOR: Color = Color::srgb(249./255., 249./255., 249./255.)
 const LTMODE_TOP_RULE_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676
 const LTMODE_MID_BKG_COLOR: Color = COLOR_WHITE;										// #FFFFFF (bkg color main area)
 const LTMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
-const LTMODE_KEY_TEXT_COLOR: Color = COLOR_BLACK;										// #000000 (glyphs on keys)
+const LTMODE_KEY_TEXT_COLOR: Color = COLOR_BLACK;										// #000000 (symbols on keys)
 const LTMODE_KEY_COLOR: Color = COLOR_WHITE;											// #FFFFFF (most keys)
 const LTMODE_CAPS_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (shift/caps)
 const LTMODE_BKSP_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (123, return, bksp)
@@ -153,8 +153,22 @@ fn main() {
         // .add_systems(PostUpdate, post_update)
         // .add_systems(Last, last)
 
-		// .add_observer(play_keypress_sound)
+		.add_observer(on_key_pressed)
+
 		.run();
+}
+
+#[derive(Event, Debug)]
+struct KeyTap {
+	glyph: char
+}
+
+fn on_key_pressed(event: On<KeyTap>) {
+	println!("Key pressed: {}", event.glyph);
+	// TODO Play sound
+	
+	// TODO: somewhere else - when a key is tapped/clicked:
+	// commands.trigger(KeyTap { glyph: 'a' });
 }
 
 fn on_dark_mode_enabled_changed(dark_mode_enabled: Res<DarkModeEnabled>, mut color_scheme: ResMut<ColorScheme>) {
@@ -443,7 +457,8 @@ fn sandbox_update(
 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
 	// msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
 	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Mine, &Side, &Index)>,
-	mut commands: Commands
+	mut commands: Commands,
+	keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
 	if dark_mode_enabled.0 {
 		dark_mode_enabled.0 = false;
@@ -458,6 +473,12 @@ fn sandbox_update(
 				commands.spawn(RemovalTarget(id));
 			}
 		}
+	}
+
+	// TODO: remove test
+	// Testing that observer fires:
+	if keyboard_input.just_pressed(KeyCode::KeyA) {
+		commands.trigger(KeyTap { glyph: 'a' });
 	}
 }
 
