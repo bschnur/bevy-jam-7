@@ -1,29 +1,34 @@
+use std::fmt;
+
 use bevy::prelude::*;
 
 // Colors
 
+const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0);
+const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0);
+
 // Bubble colors
 const BLUE_BUBBLE_COLOR: Color = Color::srgb(2./255., 129./255., 253./255.);			// #0281FD
 const GREEN_BUBBLE_COLOR: Color = Color::srgb(51./255., 206./255., 90./255.);			// #33CE5A
-const WHITE_TEXT_COLOR: Color = Color::WHITE;											// #FFFFFF
+const WHITE_TEXT_COLOR: Color = COLOR_WHITE;											// #FFFFFF
 // Darkmode colors
-const DKMODE_BKG_COLOR: Color = Color::BLACK;											// #000000 (bkg color main area)
+const DKMODE_BKG_COLOR: Color = COLOR_BLACK;											// #000000 (bkg color main area)
 const DKMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
 const DKMODE_KEY_COLOR: Color = Color::srgb(96./255., 96./255., 96./255.);				// #606060 (most keys)
 const DKMODE_CAPS_COLOR: Color = Color::srgb(209./255., 209./255., 209./255.);			// #D1D1D1 (shift/caps)
 const DKMODE_BKSP_COLOR: Color = Color::srgb(59./255., 59./255., 59./255.);				// #3B3B3B (123, return, bksp)
 const DKMODE_KEYBD_COLOR: Color = Color::srgb(27./255., 27./255., 27./255.);			// #1B1B1B (keybd bkg)
 const DKMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(38./255., 38./255., 42./255.);		// #26262A
-const DKMODE_THEIR_TEXT_COLOR: Color = Color::WHITE;									// #FFFFFF
+const DKMODE_THEIR_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF
 // Lightmode colors
-const LTMODE_BKG_COLOR: Color = Color::WHITE;											// #FFFFFF (bkg color main area)
+const LTMODE_BKG_COLOR: Color = COLOR_WHITE;											// #FFFFFF (bkg color main area)
 const LTMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
-const LTMODE_KEY_COLOR: Color = Color::WHITE;											// #FFFFFF (most keys)
+const LTMODE_KEY_COLOR: Color = COLOR_WHITE;											// #FFFFFF (most keys)
 const LTMODE_CAPS_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (shift/caps)
 const LTMODE_BKSP_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (123, return, bksp)
 const LTMODE_KEYBD_COLOR: Color = Color::srgb(227./255., 229./255., 230./255.);			// #E3E5E6 (keybd bkg)
 const LTMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(233./255., 233./255., 234./255.);	// #E9E9EA
-const LTMODE_THEIR_TEXT_COLOR: Color = Color::BLACK;									// #000000
+const LTMODE_THEIR_TEXT_COLOR: Color = COLOR_BLACK;										// #000000
 // Default colors
 const DEFAULT_BKG_COLOR: Color = DKMODE_BKG_COLOR;
 const DEFAULT_SYS_TEXT_COLOR: Color = DKMODE_SYS_TEXT_COLOR;
@@ -80,6 +85,7 @@ fn main() {
 		.insert_resource(FeverLevel(0))
 		// .insert_resource(DarkModeEnabled(true))	// Unnecessary because DarkModeEnabled implements Default.
 		.init_resource::<DarkModeEnabled>()
+		.init_resource::<SentMessageNextIndex>()
 
 		.insert_resource(ClearColor(DEFAULT_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
 
@@ -109,26 +115,107 @@ impl Default for DarkModeEnabled {
 
 // Components of a (past) text message entity: Text, FontColor, BkgColor, Side.
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct Text(String);
 
-#[derive(Component)]
-struct FontColor(Color);		// Put this in a tuple struct with the string?
+#[derive(Component, Debug)]
+struct FontColor(Color);
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct BkgColor(Color);
 
 #[derive(Debug, PartialEq, Eq)]
 enum HDir { LEFT, RIGHT, }
-#[derive(Component)]
+#[derive(Component, Debug)]
 struct Side(HDir);
 
-#[derive(Bundle)]
+impl fmt::Display for HDir {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		write!(f, "{}", match self {
+			HDir::LEFT => { "LEFT" },
+			HDir::RIGHT => { "RIGHT" },
+		})
+	}
+}
+
+#[derive(Component, Debug, PartialEq, Eq)]
+struct Index(usize);					// A custom index that we can set to an incrementing Resource<usize> value.
+										// Helpful (say) to order text messages when displaying.
+
+#[derive(Resource)]
+struct SentMessageNextIndex(usize);			// Aforementioned next-index tracking Resource for SentMessage bundles.
+impl Default for SentMessageNextIndex {
+	fn default() -> Self {
+		Self(0)
+	}
+}
+
+#[derive(Bundle, Debug)]
 struct SentMessage {
 	text: Text,
 	font_color: FontColor,
 	bkg_color: BkgColor,
 	side: Side,
+	index: Index,
+}
+// impl fmt::Display for SentMessage {
+// 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+// 		let font_srgba = self.font_color.0.to_srgba();
+// 		let bkg_srgba = self.bkg_color.0.to_srgba();
+// 		write!(
+// 			f,
+// 			"\"{}\"\nFont Color: ({}, {}, {}, {})\nBkg Color: ({}, {}, {}, {})\nSide: {}\nIndex: {}",
+// 			self.text.0,
+// 			font_srgba.red, font_srgba.blue, font_srgba.green, font_srgba.alpha,
+// 			bkg_srgba.red, bkg_srgba.blue, bkg_srgba.green, bkg_srgba.alpha,
+// 			self.side.0,
+// 			self.index.0,
+// 		)
+// 	}
+// }
+
+fn display_sent_message(
+	text: Option<&Text>,
+	font_color: Option<&FontColor>,
+	bkg_color: Option<&BkgColor>,
+	side: Option<&Side>,
+	index: Option<&Index>,
+) {
+	println!();
+	
+	if let Some(text) = text {
+		println!("Text: \"{}\"", text.0);
+	}
+
+	if let Some(font_color) = font_color {
+		let font_srgba = font_color.0.to_srgba();
+		println!(
+			"FontColor: ({}, {}, {}, {})",
+			font_srgba.red,
+			font_srgba.blue,
+			font_srgba.green,
+			font_srgba.alpha,
+		);
+	}
+
+	if let Some(bkg_color) = bkg_color {
+		let bkg_srgba = bkg_color.0.to_srgba();
+		println!(
+			"BkgColor: ({}, {}, {}, {})",
+			bkg_srgba.red,
+			bkg_srgba.blue,
+			bkg_srgba.green,
+			bkg_srgba.alpha,
+		);
+	}
+
+	if let Some(side) = side {
+		println!("Side: {}", side.0);
+	}
+
+	if let Some(index) = index {
+		println!("Index: {}", index.0);
+	}
 }
 
 #[derive(Component)]
@@ -165,80 +252,41 @@ struct RemovalTarget(Entity);		// We can spawn a set of entities that store ids 
 
 fn spawn_sent_message(
 	commands: &mut Commands,
+	next_index: &mut ResMut<SentMessageNextIndex>,
 	text: &'static str,
 	mine: bool,
 	preserve_on_clear: bool,
 ) {
-	// spawn_sent_message_raw(
-	// 	commands,
-	// 	text,
-	// 	if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR },
-	// 	if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },
-	// 	if mine { HDir::RIGHT } else { HDir::LEFT },
-	// 	preserve_on_clear
-	// );
-
 	let mut id = commands.spawn((
 		SentMessage {
 			text: Text(String::from(text)),
 			font_color: FontColor(if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR }),
 			bkg_color: BkgColor(if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },),
-			side: Side(if mine { HDir::RIGHT } else { HDir::LEFT })
+			side: Side(if mine { HDir::RIGHT } else { HDir::LEFT }),
+			index: Index(next_index.0),
 		},
 	));
 	if preserve_on_clear {
 		id.insert(PreserveOnClear);
 	}
+	next_index.0 += 1;
 }
 
-// Could have implemented as two functions - in fact here they are, the original draft:
-fn _spawn_sent_message_low_level(
-	commands: &mut Commands,
-	text: &'static str,
-	font_color: Color,
-	bkg_color: Color,
-	side: HDir,
-	preserve_on_clear: bool,
+fn sandbox_setup(
+	dark_mode_enabled: Res<DarkModeEnabled>,
+	mut next_index: ResMut<SentMessageNextIndex>,
+	mut commands: Commands
 ) {
-	let mut id = commands.spawn((
-		SentMessage {
-			text: Text(String::from(text)),
-			font_color: FontColor(font_color),
-			bkg_color: BkgColor(bkg_color),
-			side: Side(side)
-		},
-	));
-	if preserve_on_clear {
-		id.insert(PreserveOnClear);
-	}
-}
-fn _spawn_sent_message_high_level(
-	commands: &mut Commands,
-	text: &'static str,
-	mine: bool,
-	preserve_on_clear: bool,
-) {
-	_spawn_sent_message_low_level(
-		commands,
-		text,
-		if mine { DEFAULT_MY_TEXT_COLOR } else { DEFAULT_THEIR_TEXT_COLOR },
-		if mine { DEFAULT_MY_BUBBLE_COLOR } else { DEFAULT_THEIR_BUBBLE_COLOR },
-		if mine { HDir::RIGHT } else { HDir::LEFT },
-		preserve_on_clear
-	);
-}
-
-fn sandbox_setup(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands) {
 	println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
 	
-	spawn_sent_message(&mut commands, "Signing off for today", true, true);
+	spawn_sent_message(&mut commands, &mut next_index, "Signing off for today", true, true);
 
-	spawn_sent_message(&mut commands, "Roger. See you tomorrow.", false, true);
-	spawn_sent_message(&mut commands, "FYI, you're leading standups.", false, true);
+	spawn_sent_message(&mut commands, &mut next_index, "Roger. See you tomorrow.", false, true);
+	spawn_sent_message(&mut commands, &mut next_index, "FYI, you're leading standups.", false, true);
 
-	spawn_sent_message(&mut commands, "Ok, on it", true, true);
+	spawn_sent_message(&mut commands, &mut next_index, "Ok, on it", true, true);
 	
-	spawn_sent_message(&mut commands, "You got this! 😎", false, true);
+	spawn_sent_message(&mut commands, &mut next_index, "You got this! 😎", false, true);
 
 	// commands.remove_resource::<DarkModeEnabled>(); // This will cause a panic.
 }
@@ -277,15 +325,18 @@ fn sandbox_setup(dark_mode_enabled: Res<DarkModeEnabled>, mut commands: Commands
 
 fn sandbox_update(
 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
-	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
+	// msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
+	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side, &Index)>,
 	mut commands: Commands
 ) {
 	if dark_mode_enabled.0 {
 		dark_mode_enabled.0 = false;
 		println!("Dark Mode Enabled? {}", dark_mode_enabled.0);
 
-		for (id, text, color, bkg, side) in &msgs {
-			println!("\nText: {}\nFontColor: {:#?}\nBkgColor: {:#?}\nScreenSide: {:?}", text.0, color.0, bkg.0, side.0);
+		for (id, text, font_color, bkg_color, side, index) in &msgs {
+		// for msg in &msgs {
+			// println!("\nText: {}\nFontColor: {:?}\nBkgColor: {:?}\nSide: {:?}\nIndex: {}", text.0, font_color.0, bkg_color.0, side.0, index.0);
+			display_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(side), Some(index));
 
 			if side.0 == HDir::RIGHT {
 				commands.spawn(RemovalTarget(id));
