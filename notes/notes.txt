@@ -109,6 +109,12 @@ cargo test --doc
 
 ---------
 
+// Notes on entities needed:
+// messages, keyboard, drafting area, ..., Read/Delivered/Sent, timestamp horizontal rule,
+// key, finger, tooth, ghost text?, individual letters?
+
+---------
+
 All app logic in Bevy uses the Entity Component System paradigm (ECS).
 https://bevy.org/learn/quick-start/getting-started/ecs/
 

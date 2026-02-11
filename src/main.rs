@@ -1,3 +1,7 @@
+// =============================================================================
+// Crate scope imports; module declarations and scope imports
+// =============================================================================
+
 use std::fmt;
 
 use bevy::{
@@ -9,7 +13,9 @@ use bevy::{
 
 use bevy_vector_shapes::prelude::*;
 
+// =============================================================================
 // Colors
+// =============================================================================
 
 const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0);
 const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0);
@@ -92,7 +98,9 @@ impl Default for ColorScheme {
 	}
 }
 
+// =============================================================================
 // Sizes
+// =============================================================================
 
 // The resolution we are pretending to render at / rendering at before scaling.
 // const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
@@ -124,94 +132,215 @@ const DEFAULT_ROW_3_INNER_MARGIN: f32 = 37.;
 const DEFAULT_ROW_3_OUTER_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
 const DEFAULT_ROW_4_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
 
-// Notes on entities needed:
-// messages, keyboard, drafting area, ..., Read/Delivered/Sent, timestamp horizontal rule,
-// key, finger, tooth, ghost text?, individual letters?
+const WINDOW_SCALE: (bool, f32) = (true, 0.5);
 
+// =============================================================================
 // App Setup
+// =============================================================================
 
 fn main() {
-	App::new()
-		// .add_plugins(DefaultPlugins)
-		.add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-				title: String::from("Sick Day"),
-				// (scale factor override must happen after this - thus setting resolution (with scale override) in window_post_startup)
-                // Set resolution to VIRTUAL_RESOLUTION.x by VIRTUAL_RESOLUTION.y logical pixels
-                resolution: WindowResolution::from(VIRTUAL_RESOLUTION),//.with_scale_factor_override(WINDOW_SCALE_FACTOR_OVERRIDE.1),
-				position: WindowPosition::Centered(MonitorSelection::Primary),
-                ..default()
-            }),
-            ..default()
-        }))
+	let mut app = App::new();
 
-		// .init_resource::<WindowScale>()
-		.insert_resource(WindowScaling(true, 0.5))
-		.init_resource::<WindowAwaitsCentering>()
-		.insert_resource(FeverLevel(0))
-		// .insert_resource(DarkModeEnabled(true))	// Unnecessary because DarkModeEnabled implements Default.
-		.init_resource::<DarkModeEnabled>()
-		.init_resource::<AndroidModeEnabled>()
-		.init_resource::<ColorScheme>()
-		.init_resource::<SentMessageNextIndex>()
-		
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Add plugins.
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-		.insert_resource(ClearColor(DEFAULT_MID_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
+	// Alter properties of added plugins when the defaults are not desired.
 
-        // .add_systems(PreStartup, pre_startup)
-        .add_systems(Startup, (sandbox_setup, startup).chain())
-		.add_systems(PostStartup, init_window_resolution_scale_factor)
-		// .add_systems(First, first)
-        // .add_systems(PreUpdate, pre_update)
-        // .add_systems(StateTransition, state_transition)
+	app.add_plugins(DefaultPlugins.set(WindowPlugin {
+		primary_window: Some(Window {
+			title: String::from("Sick Day"),
+			// Set resolution to VIRTUAL_RESOLUTION.x by VIRTUAL_RESOLUTION.y logical pixels
+			// (may be resized with scale override during PostStartup)
+			resolution: WindowResolution::from(VIRTUAL_RESOLUTION),
+			// Set position (will be re-centered after aforementioned resize if window scale is overridden)
+			position: WindowPosition::Centered(MonitorSelection::Primary),
+			..default()
+		}),
+		..default()
+	}))
 
-		// FixedUpdate: framerate-independent, predictable simulation
-		.add_systems(FixedUpdate, (
-			// resolve_velocity,
-			advance_fever,
-		).chain())
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Initialize Resource values.
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-		// Update: visuals, user input, and per-frame logic
-		.add_systems(Update, (
-			// (update_once).run_if(run_once),
-			on_window_resized,
-			(
-				sandbox_update,
-				sandbox_clear_sent_messages,
-				despawn_doomed_targets,
-				// update_finger
-			).chain(),
+	// Use init_resource if (1) they implement Default and (2) we want the default values.
+	// Otherwise use insert_resource and specify the initial value.
 
-			on_dark_mode_enabled_changed.run_if(
-				resource_changed::<DarkModeEnabled>.and(not(resource_added::<DarkModeEnabled>))
-			),
+	.insert_resource(WindowScaling(true, 0.5))
+	.init_resource::<WindowAwaitsCentering>()
 
-			on_android_mode_enabled_changed.run_if(
-				resource_changed::<AndroidModeEnabled>.and(not(resource_added::<AndroidModeEnabled>))
-			),
+	.insert_resource(FeverLevel(0))
 
-			(
-				update_colors_on_color_scheme_change,
-				print_messages_on_color_scheme_change
-			).chain().run_if(
-				resource_changed::<ColorScheme>.and(not(resource_added::<ColorScheme>))
-			)
-		))
-        // .add_systems(PostUpdate, post_update)
-        // .add_systems(Last, last)
+	.init_resource::<DarkModeEnabled>()
+	.init_resource::<AndroidModeEnabled>()
 
-		.add_observer(on_key_pressed)
+	.init_resource::<ColorScheme>()
 
-		.run();
+	.init_resource::<SentMessageNextIndex>()
+
+	.insert_resource(ClearColor(DEFAULT_MID_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
+	;
+
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Add systems.
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	// TODO: audit each use of chain() and other ordering/conditionality for necessity.
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// PreStartup, Startup, PostStartup: these run once, on app launch.
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(PreStartup, pre_startup);
+
+	#[cfg(debug_assertions)]
+	app.add_systems(Startup, (sandbox_startup, startup).chain());
+	#[cfg(not(debug_assertions))]
+	app.add_systems(Startup, startup);
+
+	app.add_systems(PostStartup, (init_window_resolution_scale_factor, post_startup).chain());
+
+	// .........................................................................
+	// RunMainLoop encompasses the rest of the built-in schedule labels:
+	// First
+	// PreUpdate
+	// StateTransition
+	// FixedFirst, FixedPreUpdate, FixedUpdate, FixedPostUpdate, FixedLast
+	// Update
+	// PostUpdate
+	// Last
+	// .........................................................................
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// First
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(First, first);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// PreUpdate
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(PreUpdate, pre_update);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// StateTransition
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(StateTransition, state_transition);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// FixedUpdate (and surrounding labels): framerate-independent, predictable simulation
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(FixedFirst, fixed_first)
+	.add_systems(FixedPreUpdate, fixed_pre_update)
+	.add_systems(FixedUpdate, (
+		// resolve_velocity,
+		advance_fever,
+		fixed_update,
+	).chain())
+	.add_systems(FixedPostUpdate, fixed_post_update)
+	.add_systems(FixedLast, fixed_last);
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Update: visuals, user input, and per-frame logic
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(Update, (
+		on_window_resized,
+		// update_finger
+	));
+	#[cfg(debug_assertions)]
+	app.add_systems(Update, (
+		// (update_once).run_if(run_once),
+		(
+			update,
+			sandbox_update,
+			sandbox_clear_sent_messages,
+		).chain(),
+	));
+	#[cfg(not(debug_assertions))]
+	app.add_systems(Update, (
+		update
+	));
+
+	app.add_systems(Update, (
+		on_dark_mode_enabled_changed.run_if(
+			resource_changed::<DarkModeEnabled>.and(not(resource_added::<DarkModeEnabled>))
+		),
+
+		on_android_mode_enabled_changed.run_if(
+			resource_changed::<AndroidModeEnabled>.and(not(resource_added::<AndroidModeEnabled>))
+		),
+
+		(
+			update_colors_on_color_scheme_change,
+			print_messages_on_color_scheme_change
+		).chain().run_if(
+			resource_changed::<ColorScheme>.and(not(resource_added::<ColorScheme>))
+		)
+	));
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// PostUpdate: similar role to Update but runs afterward.
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(PostUpdate, (
+		post_update,
+		despawn_doomed_targets
+	));
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Last: final schedule label encompassed by RunMainLoop.
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	app.add_systems(Last, last);
+
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Add observers.
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	app.add_observer(on_key_pressed)
+
+	.run();
 }
+
+// =============================================================================
+// Systems
+// =============================================================================
+
+// Once:
+fn pre_startup() {}
 
 fn startup(mut commands: Commands) {
 	commands.spawn(Camera2d::default());
 }
 
-// Window size and position
+fn post_startup() {}
 
-// const WINDOW_SCALE: (bool, f32) = (true, 0.5);
+// Each pass through the RunMainLoop schedule label:
+fn first() {}
+
+fn pre_update() {}
+
+fn state_transition() {}
+
+fn fixed_first() {}
+fn fixed_pre_update() {}
+fn fixed_update() {}
+fn fixed_post_update() {}
+fn fixed_last() {}
+
+fn update() {}
+fn post_update() {}
+
+fn last() {}
+
+// =============================================================================
+// Window size and position
+// =============================================================================
 
 #[derive(Resource)]
 struct WindowScaling(bool, f32);
@@ -270,7 +399,9 @@ fn on_window_resized(
 	}
 }
 
+// =============================================================================
 // Events, observers, and reactions
+// =============================================================================
 
 #[derive(Event, Debug)]
 struct KeyTap {
@@ -356,7 +487,9 @@ fn print_messages_on_color_scheme_change(
 	}
 }
 
+// =============================================================================
 // General use components and related functions
+// =============================================================================
 
 #[derive(Component)]
 struct PreserveOnClear;		// Add this along with other components/bundles when spawning, and use to filter out removal targets.
@@ -392,7 +525,9 @@ fn despawn_doomed_targets(mut commands: Commands, targets: Query<(Entity, &Doome
     }
 }
 
+// =============================================================================
 // SentMessage, bundle / component collection for the messages logged above the typing area (from 'me' or 'them').
+// =============================================================================
 // TODO: Add vector shape for the bubble.
 
 #[derive(Component, Debug)]
@@ -567,7 +702,9 @@ fn advance_fever(mut fever_level: ResMut<FeverLevel>) {
 	}
 }
 
-// Stubs
+// =============================================================================
+// Miscellaneous Stubs
+// =============================================================================
 
 // Update transforms based on linear [and angular] velocity of entities such as roaming keys, falling teeth, sliding/melting letters. 
 fn _resolve_velocity() {}
@@ -575,10 +712,12 @@ fn _resolve_velocity() {}
 // Move the finger/hand shadow/silhouette/sprite to track the cursor (or move elsewise when it doesn't).
 fn _update_finger() {}
 
+// =============================================================================
 // Sandbox / testing
+// =============================================================================
 
 // TODO: remove sandbox systems from schedule
-fn sandbox_setup(
+fn sandbox_startup(
 	_dark_mode_enabled: Res<DarkModeEnabled>,
 	mut next_index: ResMut<SentMessageNextIndex>,
 	color_scheme: Res<ColorScheme>,
@@ -605,6 +744,7 @@ fn sandbox_clear_sent_messages(mut commands: Commands, msgs: Query<(Entity, &Tex
 }
 
 // TODO: remove sandbox systems from schedule
+#[cfg(debug_assertions)]
 fn sandbox_update(
 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
 	mut android_mode_enabled: ResMut<AndroidModeEnabled>,
@@ -641,7 +781,9 @@ fn sandbox_update(
 	}
 }
 
-// EXAMPLES
+// =============================================================================
+// Examples
+// =============================================================================
 
 // Custom plugin example
 
