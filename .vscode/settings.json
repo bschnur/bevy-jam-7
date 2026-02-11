@@ -1,0 +1,9 @@
+{
+	"rust-analyzer.files.exclude": [
+		".direnv",
+		".git",
+		"target"
+	],
+	"rust-analyzer.cargo.targetDir": true,
+	"rust-analyzer.checkOnSave": true
+}
