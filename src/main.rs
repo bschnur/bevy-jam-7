@@ -14,8 +14,7 @@ use bevy::{
 
 use bevy_vector_shapes::prelude::*;
 
-mod window;
-use window as sick_window;
+mod window_utils;
 
 // =============================================================================
 // Colors
@@ -172,9 +171,9 @@ fn main() {
 	// Use init_resource if (1) they implement Default and (2) we want the default values.
 	// Otherwise use insert_resource and specify the initial value.
 
-	.insert_resource(sick_window::VirtualResolution(VIRTUAL_RESOLUTION))
-	.insert_resource(sick_window::WindowScaling(true, 0.5))
-	.init_resource::<sick_window::WindowAwaitsCentering>()
+	.insert_resource(window_utils::VirtualResolution(VIRTUAL_RESOLUTION))
+	.insert_resource(window_utils::WindowScaling(true, 0.5))
+	.init_resource::<window_utils::WindowAwaitsCentering>()
 
 	.insert_resource(FeverLevel(0))
 
@@ -205,7 +204,7 @@ fn main() {
 	#[cfg(not(debug_assertions))]
 	app.add_systems(Startup, startup);
 
-	app.add_systems(PostStartup, (sick_window::init_window_resolution_scale_factor, post_startup).chain());
+	app.add_systems(PostStartup, (window_utils::init_window_resolution_scale_factor, post_startup).chain());
 
 	// .........................................................................
 	// RunMainLoop encompasses the rest of the built-in schedule labels:
@@ -255,7 +254,7 @@ fn main() {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	app.add_systems(Update, (
-		sick_window::on_window_resized,
+		window_utils::on_window_resized,
 		// update_finger
 	));
 	#[cfg(debug_assertions)]
@@ -317,16 +316,25 @@ fn main() {
 // Systems
 // =============================================================================
 
-// Once:
+// ### Once: ###
+
 fn pre_startup() {}
 
-fn startup(mut commands: Commands) {
+fn startup(
+	mut commands: Commands,
+	asset_server: Res<AssetServer>,
+) {
 	commands.spawn(Camera2d::default());
+	commands.spawn((
+		AudioPlayer::new(asset_server.load("audio/music/sickdaythememidi.ogg")),
+		PlaybackSettings::LOOP,
+	));
 }
 
 fn post_startup() {}
 
-// Each pass through the RunMainLoop schedule label:
+// ### Each pass through the RunMainLoop schedule label: ###
+
 fn first() {}
 
 fn pre_update() {}
