@@ -1,6 +1,18 @@
 use std::fmt;
 
-use bevy::prelude::*;
+use bevy::{
+	prelude::*,
+	window::{
+		WindowResolution, Monitor, PrimaryMonitor, WindowResized
+	},
+	// window::PrimaryWindow,
+	// winit::{
+	// 	WinitWindows,
+	// },
+
+};
+// use bevy_winit::WINIT_WINDOWS;
+use bevy_vector_shapes::prelude::*;
 
 // Colors
 
@@ -96,7 +108,8 @@ impl Default for ColorScheme {
 // Sizes
 
 // The resolution we are pretending to render at / rendering at before scaling.
-const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
+// const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
+const VIRTUAL_RESOLUTION: UVec2 = UVec2::new(1080, 1920);
 // The below sizes are calculated based on the virtual resolution.
 // Lots of things marked DEFAULT with the intention being they may be substituted for.
 const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
@@ -132,8 +145,20 @@ const DEFAULT_ROW_4_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
 
 fn main() {
 	App::new()
-		.add_plugins(DefaultPlugins)
+		// .add_plugins(DefaultPlugins)
+		.add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+				title: String::from("Sick Day"),
+				// (scale factor override must happen after this - thus setting resolution (with scale override) in window_post_startup)
+                // Set resolution to VIRTUAL_RESOLUTION.x by VIRTUAL_RESOLUTION.y logical pixels
+                resolution: WindowResolution::from(VIRTUAL_RESOLUTION),//.with_scale_factor_override(WINDOW_SCALE_FACTOR_OVERRIDE.1),
+				position: WindowPosition::Centered(MonitorSelection::Primary),
+                ..default()
+            }),
+            ..default()
+        }))
 
+		.init_resource::<WindowAwaitsCentering>()
 		.insert_resource(FeverLevel(0))
 		// .insert_resource(DarkModeEnabled(true))	// Unnecessary because DarkModeEnabled implements Default.
 		.init_resource::<ColorScheme>()
@@ -144,18 +169,84 @@ fn main() {
 
         // .add_systems(PreStartup, pre_startup)
         .add_systems(Startup, (sandbox_setup, setup).chain())
-        // .add_systems(PostStartup, post_startup)
+		.add_systems(PostStartup, init_window_resolution_scale_factor)
 		// .add_systems(First, first)
         // .add_systems(PreUpdate, pre_update)
         // .add_systems(StateTransition, state_transition)
         .add_systems(FixedUpdate, (resolve_velocity, advance_fever).chain()) // framerate-independent, predictable simulation
-		.add_systems(Update, ((sandbox_update, sandbox_clear_sent_messages, sandbox_process_removal_targets, update_finger).chain(), (on_dark_mode_enabled_changed, update_sent_message_colors, print_messages_after_dark_mode_change).chain().run_if(resource_changed::<DarkModeEnabled>))) // visuals, user input, and per-frame logic
+		.add_systems(Update, (	// visuals, user input, and per-frame logic
+			// (window_update_once).run_if(run_once),
+			on_window_resized,
+			(
+				sandbox_update,
+				sandbox_clear_sent_messages,
+				sandbox_process_removal_targets,
+				update_finger
+			).chain(),
+			(
+				on_dark_mode_enabled_changed
+			).run_if(resource_changed::<DarkModeEnabled>),
+			(
+				update_sent_message_colors,
+				print_messages_after_dark_mode_change
+			).chain().run_if(resource_changed::<ColorScheme>)
+		))
         // .add_systems(PostUpdate, post_update)
         // .add_systems(Last, last)
 
 		.add_observer(on_key_pressed)
 
 		.run();
+}
+
+// const WINDOW_POS_AUTOMATIC: bool = false;
+const WINDOW_SCALE_FACTOR_OVERRIDE: (bool, f32) = (true, 0.5);
+
+fn init_window_resolution_scale_factor(
+	mut window: Single<&mut Window>,
+	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
+) {
+	window.resolution =
+		if WINDOW_SCALE_FACTOR_OVERRIDE.0 {
+			WindowResolution::from(VIRTUAL_RESOLUTION).with_scale_factor_override(WINDOW_SCALE_FACTOR_OVERRIDE.1)
+		} else {
+			WindowResolution::from(VIRTUAL_RESOLUTION)
+		};
+
+	window_awaits_centering.0 = true;
+}
+
+#[derive(Resource)]
+struct WindowAwaitsCentering(bool);
+impl Default for WindowAwaitsCentering {
+	fn default() -> Self {
+		WindowAwaitsCentering(false)
+	}
+}
+
+fn on_window_resized(
+	mut resize_reader: MessageReader<WindowResized>,
+	mut window: Single<&mut Window>,
+	monitor: Single<&Monitor, With<PrimaryMonitor>>,
+	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
+) {
+	if window_awaits_centering.0 {
+		for e in resize_reader.read() {
+			window_awaits_centering.0 = false;
+
+			let monitor_width = monitor.physical_width as i32;
+			let monitor_height = monitor.physical_height as i32;
+			let monitor_offset = monitor.physical_position;
+
+			let window_width = (e.width * WINDOW_SCALE_FACTOR_OVERRIDE.1) as i32;
+			let window_height = (e.height * WINDOW_SCALE_FACTOR_OVERRIDE.1) as i32;
+
+			let pos_x = monitor_offset.x + (monitor_width - window_width) / 2;
+			let pos_y = monitor_offset.y + (monitor_height - window_height) / 2;
+			
+			window.position = WindowPosition::At(IVec2::new(pos_x, pos_y));
+		}
+	}
 }
 
 #[derive(Event, Debug)]
@@ -506,8 +597,8 @@ fn sandbox_process_removal_targets(mut commands: Commands, targets: Query<(Entit
 // 	}
 // }
 
-fn setup() {
-
+fn setup(mut commands: Commands) {
+	commands.spawn(Camera2d::default());
 }
 
 // Update transforms based on linear [and angular] velocity of entities such as roaming keys, falling teeth, sliding/melting letters. 
