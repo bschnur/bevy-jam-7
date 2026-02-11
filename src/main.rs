@@ -3,15 +3,10 @@ use std::fmt;
 use bevy::{
 	prelude::*,
 	window::{
-		WindowResolution, Monitor, PrimaryMonitor, WindowResized
-	},
-	// window::PrimaryWindow,
-	// winit::{
-	// 	WinitWindows,
-	// },
-
+		Monitor, PrimaryMonitor, WindowResized, WindowResolution
+	}
 };
-// use bevy_winit::WINIT_WINDOWS;
+
 use bevy_vector_shapes::prelude::*;
 
 // Colors
@@ -61,7 +56,7 @@ const DEFAULT_MY_TEXT_COLOR: Color = COLOR_WHITE;
 const DEFAULT_THEIR_BUBBLE_COLOR: Color = DKMODE_THEIR_BUBBLE_COLOR;
 const DEFAULT_THEIR_TEXT_COLOR: Color = DKMODE_THEIR_TEXT_COLOR;
 
-#[derive(Resource)]
+#[derive(Resource, PartialEq)]
 struct ColorScheme {
 	top_bkg_color: Color,
 	top_rule_color: Color,
@@ -96,14 +91,6 @@ impl Default for ColorScheme {
 		}
 	}
 }
-
-// #[derive(Resource)]
-// struct DarkModeEnabled(bool);	// Can we set up an observer for when this changes?
-// impl Default for DarkModeEnabled {
-// 	fn default() -> Self {
-// 		Self(true)
-// 	}
-// }
 
 // Sizes
 
@@ -141,7 +128,7 @@ const DEFAULT_ROW_4_MARGIN: f32 = DEFAULT_ROW_1_MARGIN;
 // messages, keyboard, drafting area, ..., Read/Delivered/Sent, timestamp horizontal rule,
 // key, finger, tooth, ghost text?, individual letters?
 
-// Refresh on usefulness/need for bundles vs tupled components.
+// App Setup
 
 fn main() {
 	App::new()
@@ -158,38 +145,57 @@ fn main() {
             ..default()
         }))
 
+		// .init_resource::<WindowScale>()
+		.insert_resource(WindowScaling(true, 0.5))
 		.init_resource::<WindowAwaitsCentering>()
 		.insert_resource(FeverLevel(0))
 		// .insert_resource(DarkModeEnabled(true))	// Unnecessary because DarkModeEnabled implements Default.
-		.init_resource::<ColorScheme>()
 		.init_resource::<DarkModeEnabled>()
+		.init_resource::<AndroidModeEnabled>()
+		.init_resource::<ColorScheme>()
 		.init_resource::<SentMessageNextIndex>()
+		
 
 		.insert_resource(ClearColor(DEFAULT_MID_BKG_COLOR)) // bevy built-in Resource, used for window clearing - might not use
 
         // .add_systems(PreStartup, pre_startup)
-        .add_systems(Startup, (sandbox_setup, setup).chain())
+        .add_systems(Startup, (sandbox_setup, startup).chain())
 		.add_systems(PostStartup, init_window_resolution_scale_factor)
 		// .add_systems(First, first)
         // .add_systems(PreUpdate, pre_update)
         // .add_systems(StateTransition, state_transition)
-        .add_systems(FixedUpdate, (resolve_velocity, advance_fever).chain()) // framerate-independent, predictable simulation
-		.add_systems(Update, (	// visuals, user input, and per-frame logic
-			// (window_update_once).run_if(run_once),
+
+		// FixedUpdate: framerate-independent, predictable simulation
+		.add_systems(FixedUpdate, (
+			// resolve_velocity,
+			advance_fever,
+		).chain())
+
+		// Update: visuals, user input, and per-frame logic
+		.add_systems(Update, (
+			// (update_once).run_if(run_once),
 			on_window_resized,
 			(
 				sandbox_update,
 				sandbox_clear_sent_messages,
-				sandbox_process_removal_targets,
-				update_finger
+				despawn_doomed_targets,
+				// update_finger
 			).chain(),
+
+			on_dark_mode_enabled_changed.run_if(
+				resource_changed::<DarkModeEnabled>.and(not(resource_added::<DarkModeEnabled>))
+			),
+
+			on_android_mode_enabled_changed.run_if(
+				resource_changed::<AndroidModeEnabled>.and(not(resource_added::<AndroidModeEnabled>))
+			),
+
 			(
-				on_dark_mode_enabled_changed
-			).run_if(resource_changed::<DarkModeEnabled>),
-			(
-				update_sent_message_colors,
-				print_messages_after_dark_mode_change
-			).chain().run_if(resource_changed::<ColorScheme>)
+				update_colors_on_color_scheme_change,
+				print_messages_on_color_scheme_change
+			).chain().run_if(
+				resource_changed::<ColorScheme>.and(not(resource_added::<ColorScheme>))
+			)
 		))
         // .add_systems(PostUpdate, post_update)
         // .add_systems(Last, last)
@@ -199,16 +205,38 @@ fn main() {
 		.run();
 }
 
-// const WINDOW_POS_AUTOMATIC: bool = false;
-const WINDOW_SCALE_FACTOR_OVERRIDE: (bool, f32) = (true, 0.5);
+fn startup(mut commands: Commands) {
+	commands.spawn(Camera2d::default());
+}
+
+// Window size and position
+
+// const WINDOW_SCALE: (bool, f32) = (true, 0.5);
+
+#[derive(Resource)]
+struct WindowScaling(bool, f32);
+impl Default for WindowScaling {
+	fn default() -> Self {
+		Self(false, 1.0)
+	}
+}
+
+#[derive(Resource)]
+struct WindowAwaitsCentering(bool);
+impl Default for WindowAwaitsCentering {
+	fn default() -> Self {
+		Self(false)
+	}
+}
 
 fn init_window_resolution_scale_factor(
 	mut window: Single<&mut Window>,
 	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
+	window_scaling: Res<WindowScaling>,
 ) {
 	window.resolution =
-		if WINDOW_SCALE_FACTOR_OVERRIDE.0 {
-			WindowResolution::from(VIRTUAL_RESOLUTION).with_scale_factor_override(WINDOW_SCALE_FACTOR_OVERRIDE.1)
+		if window_scaling.0 {
+			WindowResolution::from(VIRTUAL_RESOLUTION).with_scale_factor_override(window_scaling.1)
 		} else {
 			WindowResolution::from(VIRTUAL_RESOLUTION)
 		};
@@ -216,19 +244,12 @@ fn init_window_resolution_scale_factor(
 	window_awaits_centering.0 = true;
 }
 
-#[derive(Resource)]
-struct WindowAwaitsCentering(bool);
-impl Default for WindowAwaitsCentering {
-	fn default() -> Self {
-		WindowAwaitsCentering(false)
-	}
-}
-
 fn on_window_resized(
 	mut resize_reader: MessageReader<WindowResized>,
 	mut window: Single<&mut Window>,
 	monitor: Single<&Monitor, With<PrimaryMonitor>>,
 	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
+	window_scaling: Res<WindowScaling>,
 ) {
 	if window_awaits_centering.0 {
 		for e in resize_reader.read() {
@@ -238,8 +259,8 @@ fn on_window_resized(
 			let monitor_height = monitor.physical_height as i32;
 			let monitor_offset = monitor.physical_position;
 
-			let window_width = (e.width * WINDOW_SCALE_FACTOR_OVERRIDE.1) as i32;
-			let window_height = (e.height * WINDOW_SCALE_FACTOR_OVERRIDE.1) as i32;
+			let window_width = (e.width * window_scaling.1) as i32;
+			let window_height = (e.height * window_scaling.1) as i32;
 
 			let pos_x = monitor_offset.x + (monitor_width - window_width) / 2;
 			let pos_y = monitor_offset.y + (monitor_height - window_height) / 2;
@@ -249,6 +270,8 @@ fn on_window_resized(
 	}
 }
 
+// Events, observers, and reactions
+
 #[derive(Event, Debug)]
 struct KeyTap {
 	glyph: char
@@ -257,11 +280,34 @@ struct KeyTap {
 fn on_key_pressed(event: On<KeyTap>) {
 	println!("Key pressed: {}", event.glyph);
 	// TODO Play sound
+	// TODO type character in field
 }
 
-fn on_dark_mode_enabled_changed(dark_mode_enabled: Res<DarkModeEnabled>, mut color_scheme: ResMut<ColorScheme>) {
+// This resource tracks the currently selected color mode (i.e. light, dark).
+#[derive(Resource)]
+struct DarkModeEnabled(bool);	// Can we set up an observer for when this changes?
+impl Default for DarkModeEnabled {
+	fn default() -> Self {
+		Self(true)
+	}
+}
+
+// This resource tracks whether we're in SMS/Android land (green bubbles).
+#[derive(Resource)]
+struct AndroidModeEnabled(bool);	// Can we set up an observer for when this changes?
+impl Default for AndroidModeEnabled {
+	fn default() -> Self {
+		Self(false)
+	}
+}
+
+// This runs when DarkModeEnabled changes (see App setup).
+fn on_dark_mode_enabled_changed(
+	dark_mode_enabled: Res<DarkModeEnabled>,
+	mut color_scheme: ResMut<ColorScheme>
+) {
 	let dark = dark_mode_enabled.0;
-	println!("\nchanging scheme colors! dark mode enabled? {dark}");
+	// println!("\nchanging scheme colors! dark mode enabled? {dark}");
 	color_scheme.top_bkg_color = if dark { DKMODE_TOP_BKG_COLOR } else { LTMODE_TOP_BKG_COLOR };
 	color_scheme.top_rule_color = if dark { DKMODE_TOP_RULE_COLOR } else { LTMODE_TOP_RULE_COLOR };
 	color_scheme.mid_bkg_color = if dark { DKMODE_MID_BKG_COLOR } else { LTMODE_MID_BKG_COLOR };
@@ -278,9 +324,18 @@ fn on_dark_mode_enabled_changed(dark_mode_enabled: Res<DarkModeEnabled>, mut col
 	color_scheme.their_text_color = if dark { DKMODE_THEIR_TEXT_COLOR } else { LTMODE_THEIR_TEXT_COLOR };
 }
 
-// For now, the only entities with Text are those created via SentMessageBundle.
-// If that changes, we will need to make this filter more specific.
-fn update_sent_message_colors(
+// This runs when AndroidModeEnabled changes (see App setup).
+fn on_android_mode_enabled_changed(
+	android_mode_enabled: Res<AndroidModeEnabled>,
+	mut color_scheme: ResMut<ColorScheme>
+) {
+	color_scheme.my_bubble_color = if android_mode_enabled.0 { GREEN_BUBBLE_COLOR } else { BLUE_BUBBLE_COLOR };
+}
+
+// This runs when ColorScheme changes (see App setup).
+fn update_colors_on_color_scheme_change(
+	// For now, the only entities with Text are those created via SentMessageBundle.
+	// If that changes, we will need to make this filter more specific.
 	mut msgs: Query<(&mut FontColor, &mut BkgColor, &IsMine), With<Text>>,
 	color_scheme: Res<ColorScheme>,
 ) {
@@ -290,9 +345,10 @@ fn update_sent_message_colors(
 	}
 }
 
-fn print_messages_after_dark_mode_change(
+fn print_messages_on_color_scheme_change(
 	msgs: Query<(&Text, &FontColor, &BkgColor, &IsMine, &Side, &Index)>
 ) {
+	println!("\nprint_messages_on_color_scheme_change()");
 	for (text, font_color, bkg_color, is_mine, side, index) in &msgs {
 	// for msg in &msgs {
 		// println!("\nText: {}\nFontColor: {:?}\nBkgColor: {:?}\nSide: {:?}\nIndex: {}", text.0, font_color.0, bkg_color.0, side.0, index.0);
@@ -300,26 +356,44 @@ fn print_messages_after_dark_mode_change(
 	}
 }
 
-// // A mutable Query allows changing the iterated items.
-// fn update_people(mut query: Query<&mut Name, With<Person>>) {
-// 	for mut name in &mut query {
-// 		if name.0 == "Elaina Proctor" {
-// 			name.0 = String::from("Elaina Hume");
-// 		}
-// 	}
-// }
+// General use components and related functions
 
-// This resource tracks the currently selected color mode (i.e. light, dark).
-#[derive(Resource)]
-struct DarkModeEnabled(bool);	// Can we set up an observer for when this changes?
-impl Default for DarkModeEnabled {
-	fn default() -> Self {
-		Self(true)
-	}
+#[derive(Component)]
+struct PreserveOnClear;		// Add this along with other components/bundles when spawning, and use to filter out removal targets.
+
+#[derive(Component)]
+struct Doomed(Entity);		// We can spawn a set of entities that store ids of other entities.
+									// An example shows how to store ids in these at spawn
+									// and retrieve them later to despawn target entities;
+									// in our case I think we'd rather filter using With<PreserveOnClear>
+									// but this may be a helpful paradigm for more dynamic removal.
+									// I.e., we can spawn a RemovalTarget with the id of any entity
+									// to then (in a predetermined phase of the loop / schedule) remove them,
+									// much like a queue_free in Godot.
+
+// A method of removal that can be more dynamically targeted - does not respect PreserveOnClear.
+// While despawn() is safe to call mid frame, the below allows us to queue entities for removal at leisure
+// and despawn them all in a wave at a time of our choosing (say, in response to an event via run_if).
+fn despawn_doomed_targets(mut commands: Commands, targets: Query<(Entity, &Doomed)>) {
+    for (doomed, id) in &targets {
+		// Check first if the entity is still valid / not despawned.
+		// commands.get_entity(Entity) will return (in a Result)
+		// the specific entity's commands object.
+		// Inner portion of Result pattern marked mutable because needed to call despawn().
+		if let Ok(mut entity_commands) = commands.get_entity(id.0) {
+			entity_commands.despawn();
+			println!("\nRemoved message entity with id: {}", id.0);
+		} else {
+			println!("\nSkipped removal of entity with id: {}", id.0);
+		}
+		// Either way, remove the targeting entity as its purpose is complete.
+		commands.entity(doomed).despawn();
+        println!("\nRemoved targeting entity with id: {}", doomed);
+    }
 }
 
-// Components of a (past) text message entity: Text, FontColor, BkgColor, Side.
-// TODO: Add an image component (look at tutorial).
+// SentMessage, bundle / component collection for the messages logged above the typing area (from 'me' or 'them').
+// TODO: Add vector shape for the bubble.
 
 #[derive(Component, Debug)]
 struct Text(String);
@@ -331,7 +405,7 @@ struct FontColor(Color);
 struct BkgColor(Color);
 
 #[derive(Component, Debug)]
-struct IsMine(bool);					// Aka: Is this message mine? Did I send it?
+struct IsMine(bool);
 
 #[derive(Debug, PartialEq, Eq)]
 enum HDir { LEFT, RIGHT, }
@@ -352,12 +426,15 @@ struct Index(usize);					// A custom index that we can set to an incrementing Re
 										// Helpful (say) to order text messages when displaying.
 
 #[derive(Resource)]
-struct SentMessageNextIndex(usize);			// Aforementioned next-index tracking Resource for SentMessage bundles.
+struct SentMessageNextIndex(usize);		// Afore-alluded next-index Resource for SentMessage bundles.
 impl Default for SentMessageNextIndex {
 	fn default() -> Self {
 		Self(0)
 	}
 }
+// Would be ideal to have index increment automatically on spawning a message (or creating its bundle), but
+// this likely requires use of a ctor which we haven't had to do for components or bundles yet, and
+// the current system (remembering to always spawn via the message spawning helper method) works ok for now.
 
 #[derive(Bundle, Debug)]
 struct SentMessageBundle {
@@ -368,6 +445,34 @@ struct SentMessageBundle {
 	side: Side,
 	index: Index,
 }
+
+// Utility function to spawn a message based on text content, sender/owner, and whether to preserve on conversation reset.
+fn spawn_sent_message(
+	commands: &mut Commands,
+	next_index: &mut ResMut<SentMessageNextIndex>,
+	color_scheme: & Res<ColorScheme>,
+	text: &'static str,
+	is_mine: bool,
+	preserve_on_clear: bool,
+) {
+	let bundle = SentMessageBundle {
+		text: Text(String::from(text)),
+		font_color: FontColor(if is_mine { color_scheme.my_text_color } else { color_scheme.their_text_color }),
+		bkg_color: BkgColor(if is_mine { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color },),
+		is_mine: IsMine(is_mine),
+		side: Side(if is_mine { HDir::RIGHT } else { HDir::LEFT }),
+		index: Index(next_index.0),
+	};
+	println!("\nspawn_sent_message():{}", bundle);
+	let mut id = commands.spawn(bundle);
+	if preserve_on_clear {
+		id.insert(PreserveOnClear);
+	}
+	next_index.0 += 1;
+}
+
+// This Display implementation is only useful for the bundle itself (i.e. when we are spawning a message).
+// Additional utility function below prints message details passed into it piecemeal (can be a subset).
 impl fmt::Display for SentMessageBundle {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		let font_srgba = self.font_color.0.to_srgba();
@@ -385,6 +490,7 @@ impl fmt::Display for SentMessageBundle {
 	}
 }
 
+// This utility function prints message details passed into it piecemeal (can be a subset).
 fn print_sent_message(
 	text: Option<&Text>,
 	font_color: Option<&FontColor>,
@@ -434,179 +540,6 @@ fn print_sent_message(
 	}
 }
 
-#[derive(Component)]
-struct PreserveOnClear;		// Add this along with other components/bundles when spawning, and use to filter out removal targets.
-
-#[derive(Component)]
-struct RemovalTarget(Entity);		// We can spawn a set of entities that store ids of other entities.
-									// An example shows how to store ids in these at spawn
-									// and retrieve them later to despawn target entities;
-									// in our case I think we'd rather filter using With<PreserveOnClear>
-									// but this may be a helpful paradigm for more dynamic removal.
-									// I.e., we can spawn a RemovalTarget with the id of any entity
-									// to then (in a predetermined phase of the loop / schedule) remove them,
-									// much like a queue_free in Godot.
-
-// Would be ideal to have index increment automatically on spawning a message (or creating its bundle), but
-// this likely requires use of a ctor which we haven't had to do for components or bundles yet, and
-// the current system (remembering to always spawn via the message spawning helper method) works ok for now.
-
-// Utility function to spawn a message based on text content, sender/owner, and whether to preserve on conversation reset.
-fn spawn_sent_message(
-	commands: &mut Commands,
-	next_index: &mut ResMut<SentMessageNextIndex>,
-	color_scheme: & Res<ColorScheme>,
-	text: &'static str,
-	is_mine: bool,
-	preserve_on_clear: bool,
-) {
-	let bundle = SentMessageBundle {
-		text: Text(String::from(text)),
-		font_color: FontColor(if is_mine { color_scheme.my_text_color } else { color_scheme.their_text_color }),
-		bkg_color: BkgColor(if is_mine { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color },),
-		is_mine: IsMine(is_mine),
-		side: Side(if is_mine { HDir::RIGHT } else { HDir::LEFT }),
-		index: Index(next_index.0),
-	};
-	println!("\nSpawning message: {}", bundle);
-	let mut id = commands.spawn(bundle);
-	if preserve_on_clear {
-		id.insert(PreserveOnClear);
-	}
-	next_index.0 += 1;
-}
-
-fn sandbox_setup(
-	dark_mode_enabled: Res<DarkModeEnabled>,
-	mut next_index: ResMut<SentMessageNextIndex>,
-	color_scheme: Res<ColorScheme>,
-	mut commands: Commands
-) {
-	println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
-	
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Signing off for today", true, true);
-
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Roger. See you tomorrow.", false, true);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "FYI, you're leading standups.", false, true);
-
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Ok, on it", true, true);
-	
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "You got this! 😎", false, true);
-
-	// commands.remove_resource::<DarkModeEnabled>(); // This will cause a panic.
-}
-
-// Below: an example of querying via parameters that may or may not be present on each matching entity.
-
-// fn output_players(players: Query<(&Name, &Hp, Option<&Mp>)>) {
-// 	println!("All players:");
-// 	for (name, hp, mp) in &players {
-// 		print!("Name: {}, HP: {}", name.0, hp.0);
-// 		match mp {
-// 			Some(v) => println!(", MP: {}", v.0),
-// 			None => println!(),
-// 		}
-// 	}
-// 	println!();
-// }
-
-// Below: Examples of filtering using With and Without:
-
-// fn output_wizards(wizards: Query<(&Name, &Hp), With<Mp>>) {	// More performant if we don't need to access MP component.
-// 	println!("All wizards:");
-// 	for (name, hp) in &wizards {
-// 		println!("Name: {}, HP: {}", name.0, hp.0);
-// 	}
-// 	println!();
-// }
-
-// fn output_soldiers(soldiers: Query<(&Name, &Hp), Without<Mp>>) {
-// 	println!("All soldiers:");
-// 	for (name, hp) in &soldiers {
-// 		println!("Name: {}, HP: {}", name.0, hp.0);
-// 	}
-// 	println!();
-// }
-
-fn sandbox_update(
-	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
-	// msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
-	msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &IsMine, &Side, &Index)>,
-	mut commands: Commands,
-	keyboard_input: Res<ButtonInput<KeyCode>>,
-) {
-	if dark_mode_enabled.0 {
-		dark_mode_enabled.0 = false;
-		println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
-
-		for (id, text, font_color, bkg_color, is_mine, side, index) in &msgs {
-		// for msg in &msgs {
-			// println!("\nText: {}\nFontColor: {:?}\nBkgColor: {:?}\nSide: {:?}\nIndex: {}", text.0, font_color.0, bkg_color.0, side.0, index.0);
-			print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(is_mine), Some(side), Some(index));
-
-			if side.0 == HDir::RIGHT {
-				commands.spawn(RemovalTarget(id));
-			}
-		}
-	}
-
-	// TODO: remove below test once we are firing this via actual onscreen key tap/press.
-	// Testing that observer fires:
-	if keyboard_input.just_pressed(KeyCode::KeyA) {
-		commands.trigger(KeyTap { glyph: 'a' });
-	}
-}
-
-// A system that despawns all entities with a Text component (for now, that's just SentMessage)
-// unless they possess a PreserveOnClear component.
-fn sandbox_clear_sent_messages(mut commands: Commands, msgs: Query<(Entity, &Text), Without<PreserveOnClear>>) {
-    for (id, text) in &msgs {
-        println!("\nRemoving message with text: {}", text.0);
-        commands.entity(id).despawn();
-    }
-}
-
-// A method of removal that can be more dynamically targeted - does not respect PreserveOnClear.
-fn sandbox_process_removal_targets(mut commands: Commands, targets: Query<(Entity, &RemovalTarget)>) {
-    for (removal_target, id) in &targets {
-		// Check first if the entity is still valid / not despawned.
-		// commands.get_entity(Entity) will return (in a Result)
-		// the specific entity's commands object.
-		// Inner portion of Result pattern marked mutable because needed to call despawn().
-		if let Ok(mut entity_commands) = commands.get_entity(id.0) {
-			entity_commands.despawn();
-			println!("\nRemoved message entity with id: {}", id.0);
-		} else {
-			println!("\nSkipped removal of entity with id: {}", id.0);
-		}
-		// Either way, remove the targeting entity as its purpose is complete.
-		commands.entity(removal_target).despawn();
-        println!("\nRemoved targeting entity with id: {}", removal_target);
-    }
-}
-
-// Below is an example of retrieving components in a mutable state.
-// fn mut_update_sandbox(
-// 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
-// 	mut msgs: Query<(&Text, &mut FontColor)>
-// ) {
-// 	println!("\nChanging font color");
-// 	for (text, mut color) in &mut msgs {
-// 		color.0 = Color::BLACK;
-// 		println!("\nText: {}\nFontColor: {:#?}", text.0, color.0);
-// 	}
-// }
-
-fn setup(mut commands: Commands) {
-	commands.spawn(Camera2d::default());
-}
-
-// Update transforms based on linear [and angular] velocity of entities such as roaming keys, falling teeth, sliding/melting letters. 
-fn resolve_velocity() {}
-
-// Move the finger/hand shadow/silhouette/sprite to track the cursor (or move elsewise when it doesn't).
-fn update_finger() {}
-
 // This resource tracks the player's progress through feverish events.
 #[derive(Resource)]
 struct FeverLevel(usize);
@@ -634,9 +567,83 @@ fn advance_fever(mut fever_level: ResMut<FeverLevel>) {
 	}
 }
 
-// fn output_txts (query: Query<&MessageText, With<Alignment>>) {
-// 	// for txt in query.
-// }
+// Stubs
+
+// Update transforms based on linear [and angular] velocity of entities such as roaming keys, falling teeth, sliding/melting letters. 
+fn _resolve_velocity() {}
+
+// Move the finger/hand shadow/silhouette/sprite to track the cursor (or move elsewise when it doesn't).
+fn _update_finger() {}
+
+// Sandbox / testing
+
+// TODO: remove sandbox systems from schedule
+fn sandbox_setup(
+	_dark_mode_enabled: Res<DarkModeEnabled>,
+	mut next_index: ResMut<SentMessageNextIndex>,
+	color_scheme: Res<ColorScheme>,
+	mut commands: Commands
+) {
+	// println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Signing off for today", true, true);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Roger. See you tomorrow.", false, true);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "FYI, you're leading standups.", false, true);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Ok, on it", true, true);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "You got this! 😎", false, true);
+
+	// commands.remove_resource::<DarkModeEnabled>(); // This would cause a panic.
+}
+
+// A system that despawns all entities with a Text component (for now, that's just SentMessage)
+// unless they possess a PreserveOnClear component.
+// TODO: remove sandbox systems from schedule
+fn sandbox_clear_sent_messages(mut commands: Commands, msgs: Query<(Entity, &Text), Without<PreserveOnClear>>) {
+    for (id, text) in &msgs {
+        println!("\nRemoving message with text: {}", text.0);
+        commands.entity(id).despawn();
+    }
+}
+
+// TODO: remove sandbox systems from schedule
+fn sandbox_update(
+	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
+	mut android_mode_enabled: ResMut<AndroidModeEnabled>,
+	// msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &Side)>,
+	_msgs: Query<(Entity, &Text, &FontColor, &BkgColor, &IsMine, &Side, &Index)>,
+	mut commands: Commands,
+	keyboard_input: Res<ButtonInput<KeyCode>>,
+) {
+	// if dark_mode_enabled.0 {
+	// 	dark_mode_enabled.0 = false;
+	// 	println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
+
+	// 	// for (id, _text, _font_color, _bkg_color, _is_mine, side, _index) in &msgs {
+	// 		// print_sent_message(Some(text), Some(font_color), Some(bkg_color), Some(is_mine), Some(side), Some(index));
+
+	// 		// if side.0 == HDir::RIGHT {
+	// 		// 	commands.spawn(RemovalTarget(id));
+	// 		// }
+	// 	// }
+	// }
+
+	if keyboard_input.just_pressed(KeyCode::KeyD) {
+		dark_mode_enabled.0 = !dark_mode_enabled.0;
+		println!("\nDEBUG: dark mode toggle ({})", dark_mode_enabled.0);
+	}
+
+	if keyboard_input.just_pressed(KeyCode::KeyA) {
+		android_mode_enabled.0 = !android_mode_enabled.0;
+		println!("\nDEBUG: Android mode toggle ({})", android_mode_enabled.0);
+	}
+
+	if keyboard_input.just_pressed(KeyCode::KeyF) {
+		commands.trigger(KeyTap { glyph: 'f' });
+	}
+}
+
+// EXAMPLES
+
+// Custom plugin example
 
 // pub struct HelloPlugin;
 // impl Plugin for HelloPlugin {
@@ -674,6 +681,61 @@ fn advance_fever(mut fever_level: ResMut<FeverLevel>) {
 // 	if timer.0.tick(time.delta()).just_finished() {
 // 		for name in &query {
 // 			println!("hello, {}!", name.0);
+// 		}
+// 	}
+// }
+
+// Below is an example of retrieving components in a mutable state.
+
+// fn mut_update_sandbox(
+// 	mut dark_mode_enabled: ResMut<DarkModeEnabled>,
+// 	mut msgs: Query<(&Text, &mut FontColor)>
+// ) {
+// 	println!("\nChanging font color");
+// 	for (text, mut color) in &mut msgs {
+// 		color.0 = Color::BLACK;
+// 		println!("\nText: {}\nFontColor: {:#?}", text.0, color.0);
+// 	}
+// }
+
+// Below: an example of querying via parameters that may or may not be present on each matching entity.
+
+// fn output_players(players: Query<(&Name, &Hp, Option<&Mp>)>) {
+// 	println!("All players:");
+// 	for (name, hp, mp) in &players {
+// 		print!("Name: {}, HP: {}", name.0, hp.0);
+// 		match mp {
+// 			Some(v) => println!(", MP: {}", v.0),
+// 			None => println!(),
+// 		}
+// 	}
+// 	println!();
+// }
+
+// Below: Examples of filtering using With and Without:
+
+// fn output_wizards(wizards: Query<(&Name, &Hp), With<Mp>>) {	// More performant if we don't need to access MP component.
+// 	println!("All wizards:");
+// 	for (name, hp) in &wizards {
+// 		println!("Name: {}, HP: {}", name.0, hp.0);
+// 	}
+// 	println!();
+// }
+
+// fn output_soldiers(soldiers: Query<(&Name, &Hp), Without<Mp>>) {
+// 	println!("All soldiers:");
+// 	for (name, hp) in &soldiers {
+// 		println!("Name: {}, HP: {}", name.0, hp.0);
+// 	}
+// 	println!();
+// }
+
+// Example: a mutable Query allows changing the iterated items.
+
+// fn update_people(mut query: Query<&mut Name, With<Person>>) {
+// 	for mut name in &mut query {
+// 		if name.0 == "Elaina Proctor" {
+// 			name.0 = String::from("Elaina Hume");
 // 		}
 // 	}
 // }
