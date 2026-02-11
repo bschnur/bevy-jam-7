@@ -7,11 +7,15 @@ use std::fmt;
 use bevy::{
 	prelude::*,
 	window::{
-		Monitor, PrimaryMonitor, WindowResized, WindowResolution
+		// Monitor, PrimaryMonitor, WindowResized,
+		WindowResolution,
 	}
 };
 
 use bevy_vector_shapes::prelude::*;
+
+mod window;
+use window as sick_window;
 
 // =============================================================================
 // Colors
@@ -105,6 +109,7 @@ impl Default for ColorScheme {
 // The resolution we are pretending to render at / rendering at before scaling.
 // const VIRTUAL_RESOLUTION: Vec2 = Vec2::new(1080., 1920.);
 const VIRTUAL_RESOLUTION: UVec2 = UVec2::new(1080, 1920);
+
 // The below sizes are calculated based on the virtual resolution.
 // Lots of things marked DEFAULT with the intention being they may be substituted for.
 const DEFAULT_BUBBLE_CORNER_RADIUS: f32 = 10.;
@@ -167,8 +172,9 @@ fn main() {
 	// Use init_resource if (1) they implement Default and (2) we want the default values.
 	// Otherwise use insert_resource and specify the initial value.
 
-	.insert_resource(WindowScaling(true, 0.5))
-	.init_resource::<WindowAwaitsCentering>()
+	.insert_resource(sick_window::VirtualResolution(VIRTUAL_RESOLUTION))
+	.insert_resource(sick_window::WindowScaling(true, 0.5))
+	.init_resource::<sick_window::WindowAwaitsCentering>()
 
 	.insert_resource(FeverLevel(0))
 
@@ -199,7 +205,7 @@ fn main() {
 	#[cfg(not(debug_assertions))]
 	app.add_systems(Startup, startup);
 
-	app.add_systems(PostStartup, (init_window_resolution_scale_factor, post_startup).chain());
+	app.add_systems(PostStartup, (sick_window::init_window_resolution_scale_factor, post_startup).chain());
 
 	// .........................................................................
 	// RunMainLoop encompasses the rest of the built-in schedule labels:
@@ -249,7 +255,7 @@ fn main() {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	app.add_systems(Update, (
-		on_window_resized,
+		sick_window::on_window_resized,
 		// update_finger
 	));
 	#[cfg(debug_assertions)]
@@ -342,62 +348,7 @@ fn last() {}
 // Window size and position
 // =============================================================================
 
-#[derive(Resource)]
-struct WindowScaling(bool, f32);
-impl Default for WindowScaling {
-	fn default() -> Self {
-		Self(false, 1.0)
-	}
-}
-
-#[derive(Resource)]
-struct WindowAwaitsCentering(bool);
-impl Default for WindowAwaitsCentering {
-	fn default() -> Self {
-		Self(false)
-	}
-}
-
-fn init_window_resolution_scale_factor(
-	mut window: Single<&mut Window>,
-	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
-	window_scaling: Res<WindowScaling>,
-) {
-	window.resolution =
-		if window_scaling.0 {
-			WindowResolution::from(VIRTUAL_RESOLUTION).with_scale_factor_override(window_scaling.1)
-		} else {
-			WindowResolution::from(VIRTUAL_RESOLUTION)
-		};
-
-	window_awaits_centering.0 = true;
-}
-
-fn on_window_resized(
-	mut resize_reader: MessageReader<WindowResized>,
-	mut window: Single<&mut Window>,
-	monitor: Single<&Monitor, With<PrimaryMonitor>>,
-	mut window_awaits_centering: ResMut<WindowAwaitsCentering>,
-	window_scaling: Res<WindowScaling>,
-) {
-	if window_awaits_centering.0 {
-		for e in resize_reader.read() {
-			window_awaits_centering.0 = false;
-
-			let monitor_width = monitor.physical_width as i32;
-			let monitor_height = monitor.physical_height as i32;
-			let monitor_offset = monitor.physical_position;
-
-			let window_width = (e.width * window_scaling.1) as i32;
-			let window_height = (e.height * window_scaling.1) as i32;
-
-			let pos_x = monitor_offset.x + (monitor_width - window_width) / 2;
-			let pos_y = monitor_offset.y + (monitor_height - window_height) / 2;
-			
-			window.position = WindowPosition::At(IVec2::new(pos_x, pos_y));
-		}
-	}
-}
+// Moved to window.rs
 
 // =============================================================================
 // Events, observers, and reactions
