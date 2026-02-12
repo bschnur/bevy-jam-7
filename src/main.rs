@@ -1,5 +1,5 @@
 // =============================================================================
-// Crate scope imports; module declarations and scope imports
+// Dependency (crate) scope imports
 // =============================================================================
 
 // use std::fmt;
@@ -9,7 +9,12 @@ use bevy::{
 	window::WindowResolution,
 };
 
-use bevy_vector_shapes::prelude::*;
+// use bevy_vector_shapes::prelude::*;
+use bevy_vector_shapes::Shape2dPlugin;
+
+// =============================================================================
+// Module declarations and scope imports
+// =============================================================================
 
 mod window_utils;
 mod component_utils;
@@ -88,6 +93,8 @@ fn main() {
 		..default()
 	}))
 
+	.add_plugins(Shape2dPlugin::default())
+
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	// Initialize Resource values.
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -122,12 +129,7 @@ fn main() {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	app.add_systems(PreStartup, pre_startup);
-
-	#[cfg(debug_assertions)]
-	app.add_systems(Startup, (sandbox_startup, startup).chain());
-	#[cfg(not(debug_assertions))]
 	app.add_systems(Startup, startup);
-
 	app.add_systems(PostStartup, (init_window_resolution_scale_factor, post_startup).chain());
 
 	// .........................................................................
@@ -253,12 +255,37 @@ fn pre_startup() {}
 fn startup(
 	mut commands: Commands,
 	asset_server: Res<AssetServer>,
+	mut next_index: ResMut<NextIndex>,
+	color_scheme: Res<ColorScheme>,
 ) {
-	commands.spawn(Camera2d::default());
 	commands.spawn((
-		AudioPlayer::new(asset_server.load("audio/music/sickdaythememidi.ogg")),
+		Camera2d::default(),
+		Msaa::Off,
+		AudioPlayer::new(asset_server.load("audio/music/chillopen.ogg")),
 		PlaybackSettings::LOOP,
 	));
+
+	// TODO: instead of passing in a transform, the message spawning function
+	// should handle placing a new message at a default bottom-edge alignment -
+	// so a position based on bubble height, in turn based on message length -
+	// and should set the x position based on Side and bubble width, in turn based on message length.
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Signing off for today", true, true, Some(Transform::from_xyz(400., 200., 0.)));
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Roger. See you tomorrow.", false, true, None);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "FYI, you're leading standups.", false, true, None);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Ok, on it", true, true, None);
+	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "You got this! 😎", false, true, None);
+
+	// TODO: adapt the below to draw a message bubble per sent_message
+	// commands.spawn(
+    //     ShapeBundle::rect(
+    //         &ShapeConfig {
+    //             color: BLUE_BUBBLE_COLOR,
+    //             corner_radii: Vec4::splat(40.),
+    //             ..ShapeConfig::default_2d()
+    //         },
+    //         Vec2::new(600., 80.),
+    //     ),
+    // );
 }
 
 fn post_startup() {}
@@ -354,23 +381,6 @@ fn _update_finger() {}
 // =============================================================================
 // Sandbox / testing
 // =============================================================================
-
-// TODO: remove sandbox systems from schedule
-fn sandbox_startup(
-	_dark_mode_enabled: Res<DarkModeEnabled>,
-	mut next_index: ResMut<NextIndex>,
-	color_scheme: Res<ColorScheme>,
-	mut commands: Commands
-) {
-	// println!("\nDark Mode Enabled? {}", dark_mode_enabled.0);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Signing off for today", true, true);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Roger. See you tomorrow.", false, true);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "FYI, you're leading standups.", false, true);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "Ok, on it", true, true);
-	spawn_sent_message(&mut commands, &mut next_index, &color_scheme, "You got this! 😎", false, true);
-
-	// commands.remove_resource::<DarkModeEnabled>(); // This would cause a panic.
-}
 
 // A system that despawns all entities with a Text component (for now, that's just SentMessage)
 // unless they possess a PreserveOnClear component.
@@ -520,3 +530,37 @@ fn sandbox_update(
 // 		}
 // 	}
 // }
+
+// Example: rotating a 3d shape in an Update system
+
+// fn update_shapes(time: Res<Time>, mut shapes: Query<&mut Transform, With<ShapeMaterial>>) {
+//     shapes.iter_mut().for_each(|mut tf| {
+//         tf.rotate_local_z(time.delta_secs());
+//     })
+// }
+
+// Example: using multiple bundles to spawn a single entity.
+
+// Chain approach: later bundles override matching fields in earlier ones.
+// commands.spawn(BundleA::default()).insert(BundleB::default());
+
+// Tuple approach: any overlap in bundle fields may cause a panic.
+// commands.spawn((BundleA::default(), BundleB::default()));
+
+// Nest approach: Nest bundles inside another outer one.
+
+// #[derive(Bundle)]
+// struct CombinedEntityBundle {
+//     // Other components
+//     marker: MyMarkerComponent,
+//     // Nested bundles
+//     sprite_bundle: SpriteBundle,
+//     text_bundle: TextBundle,
+// }
+
+// commands.spawn(CombinedEntityBundle {
+//     marker: MyMarkerComponent,
+//     sprite_bundle: SpriteBundle::default(),
+//     text_bundle: TextBundle::default(),
+//     // ...
+// });

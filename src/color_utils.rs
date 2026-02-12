@@ -18,50 +18,50 @@ use crate::sent_message::{
 // Color constants
 // =============================================================================
 
-const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0);
-const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0);
+pub const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0);
+pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0);
 
 // Bubble colors
-const BLUE_BUBBLE_COLOR: Color = Color::srgb(2./255., 129./255., 253./255.);			// #0281FD
-const GREEN_BUBBLE_COLOR: Color = Color::srgb(51./255., 206./255., 90./255.);			// #33CE5A
+pub const BLUE_BUBBLE_COLOR: Color = Color::srgb(2./255., 129./255., 253./255.);			// #0281FD
+pub const GREEN_BUBBLE_COLOR: Color = Color::srgb(51./255., 206./255., 90./255.);			// #33CE5A
 // Darkmode colors
-const DKMODE_TOP_BKG_COLOR: Color = Color::srgb(18./255., 18./255., 18./255.);			// #121212 (bkg color topmost area)
-const DKMODE_TOP_RULE_COLOR: Color = Color::srgb(14./255., 14./255., 14./255.);			// #0E0E0E
-const DKMODE_MID_BKG_COLOR: Color = COLOR_BLACK;										// #000000 (bkg color main area)
-const DKMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
-const DKMODE_KEY_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF (symbols on keys)
-const DKMODE_KEY_COLOR: Color = Color::srgb(96./255., 96./255., 96./255.);				// #606060 (most keys)
-const DKMODE_CAPS_COLOR: Color = Color::srgb(209./255., 209./255., 209./255.);			// #D1D1D1 (shift/caps)
-const DKMODE_BKSP_COLOR: Color = Color::srgb(59./255., 59./255., 59./255.);				// #3B3B3B (123, return, bksp)
-const DKMODE_KEYBOARD_COLOR: Color = Color::srgb(27./255., 27./255., 27./255.);			// #1B1B1B (keyboard bkg)
-const DKMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(38./255., 38./255., 42./255.);		// #26262A
-const DKMODE_THEIR_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF
+pub const DKMODE_TOP_BKG_COLOR: Color = Color::srgb(18./255., 18./255., 18./255.);			// #121212 (bkg color topmost area)
+pub const DKMODE_TOP_RULE_COLOR: Color = Color::srgb(14./255., 14./255., 14./255.);			// #0E0E0E
+pub const DKMODE_MID_BKG_COLOR: Color = COLOR_BLACK;										// #000000 (bkg color main area)
+pub const DKMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
+pub const DKMODE_KEY_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF (symbols on keys)
+pub const DKMODE_KEY_COLOR: Color = Color::srgb(96./255., 96./255., 96./255.);				// #606060 (most keys)
+pub const DKMODE_CAPS_COLOR: Color = Color::srgb(209./255., 209./255., 209./255.);			// #D1D1D1 (shift/caps)
+pub const DKMODE_BKSP_COLOR: Color = Color::srgb(59./255., 59./255., 59./255.);				// #3B3B3B (123, return, bksp)
+pub const DKMODE_KEYBOARD_COLOR: Color = Color::srgb(27./255., 27./255., 27./255.);			// #1B1B1B (keyboard bkg)
+pub const DKMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(38./255., 38./255., 42./255.);		// #26262A
+pub const DKMODE_THEIR_TEXT_COLOR: Color = COLOR_WHITE;										// #FFFFFF
 // Lightmode colors
-const LTMODE_TOP_BKG_COLOR: Color = Color::srgb(249./255., 249./255., 249./255.);		// #F9F9F9
-const LTMODE_TOP_RULE_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676
-const LTMODE_MID_BKG_COLOR: Color = COLOR_WHITE;										// #FFFFFF (bkg color main area)
-const LTMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
-const LTMODE_KEY_TEXT_COLOR: Color = COLOR_BLACK;										// #000000 (symbols on keys)
-const LTMODE_KEY_COLOR: Color = COLOR_WHITE;											// #FFFFFF (most keys)
-const LTMODE_CAPS_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (shift/caps)
-const LTMODE_BKSP_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (123, return, bksp)
-const LTMODE_KEYBOARD_COLOR: Color = Color::srgb(227./255., 229./255., 230./255.);		// #E3E5E6 (keyboard bkg)
-const LTMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(233./255., 233./255., 234./255.);	// #E9E9EA
-const LTMODE_THEIR_TEXT_COLOR: Color = COLOR_BLACK;										// #000000
+pub const LTMODE_TOP_BKG_COLOR: Color = Color::srgb(249./255., 249./255., 249./255.);		// #F9F9F9
+pub const LTMODE_TOP_RULE_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676
+pub const LTMODE_MID_BKG_COLOR: Color = COLOR_WHITE;										// #FFFFFF (bkg color main area)
+pub const LTMODE_SYS_TEXT_COLOR: Color = Color::srgb(118./255., 118./255., 118./255.);		// #767676 (Read, Sent, Delivered, date/time, etc.)
+pub const LTMODE_KEY_TEXT_COLOR: Color = COLOR_BLACK;										// #000000 (symbols on keys)
+pub const LTMODE_KEY_COLOR: Color = COLOR_WHITE;											// #FFFFFF (most keys)
+pub const LTMODE_CAPS_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (shift/caps)
+pub const LTMODE_BKSP_COLOR: Color = LTMODE_KEY_COLOR;										// #FFFFFF (123, return, bksp)
+pub const LTMODE_KEYBOARD_COLOR: Color = Color::srgb(227./255., 229./255., 230./255.);		// #E3E5E6 (keyboard bkg)
+pub const LTMODE_THEIR_BUBBLE_COLOR: Color = Color::srgb(233./255., 233./255., 234./255.);	// #E9E9EA
+pub const LTMODE_THEIR_TEXT_COLOR: Color = COLOR_BLACK;										// #000000
 // Default colors
-const DEFAULT_TOP_BKG_COLOR: Color = DKMODE_TOP_BKG_COLOR;
-const DEFAULT_TOP_RULE_COLOR: Color = DKMODE_TOP_RULE_COLOR;
-const DEFAULT_MID_BKG_COLOR: Color = DKMODE_MID_BKG_COLOR;
-const DEFAULT_SYS_TEXT_COLOR: Color = DKMODE_SYS_TEXT_COLOR;
-const DEFAULT_KEY_TEXT_COLOR: Color = DKMODE_KEY_TEXT_COLOR;
-const DEFAULT_KEY_COLOR: Color = DKMODE_KEY_COLOR;
-const DEFAULT_CAPS_COLOR: Color = DKMODE_CAPS_COLOR;
-const DEFAULT_BKSP_COLOR: Color = DKMODE_BKSP_COLOR;
-const DEFAULT_KEYBOARD_COLOR: Color = DKMODE_KEYBOARD_COLOR;
-const DEFAULT_MY_BUBBLE_COLOR: Color = BLUE_BUBBLE_COLOR;
-const DEFAULT_MY_TEXT_COLOR: Color = COLOR_WHITE;
-const DEFAULT_THEIR_BUBBLE_COLOR: Color = DKMODE_THEIR_BUBBLE_COLOR;
-const DEFAULT_THEIR_TEXT_COLOR: Color = DKMODE_THEIR_TEXT_COLOR;
+pub const DEFAULT_TOP_BKG_COLOR: Color = DKMODE_TOP_BKG_COLOR;
+pub const DEFAULT_TOP_RULE_COLOR: Color = DKMODE_TOP_RULE_COLOR;
+pub const DEFAULT_MID_BKG_COLOR: Color = DKMODE_MID_BKG_COLOR;
+pub const DEFAULT_SYS_TEXT_COLOR: Color = DKMODE_SYS_TEXT_COLOR;
+pub const DEFAULT_KEY_TEXT_COLOR: Color = DKMODE_KEY_TEXT_COLOR;
+pub const DEFAULT_KEY_COLOR: Color = DKMODE_KEY_COLOR;
+pub const DEFAULT_CAPS_COLOR: Color = DKMODE_CAPS_COLOR;
+pub const DEFAULT_BKSP_COLOR: Color = DKMODE_BKSP_COLOR;
+pub const DEFAULT_KEYBOARD_COLOR: Color = DKMODE_KEYBOARD_COLOR;
+pub const DEFAULT_MY_BUBBLE_COLOR: Color = BLUE_BUBBLE_COLOR;
+pub const DEFAULT_MY_TEXT_COLOR: Color = COLOR_WHITE;
+pub const DEFAULT_THEIR_BUBBLE_COLOR: Color = DKMODE_THEIR_BUBBLE_COLOR;
+pub const DEFAULT_THEIR_TEXT_COLOR: Color = DKMODE_THEIR_TEXT_COLOR;
 
 #[derive(Resource, PartialEq)]
 pub struct ColorScheme {

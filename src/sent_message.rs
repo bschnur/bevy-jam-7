@@ -2,17 +2,16 @@ use std::fmt;
 use bevy::prelude::{
 	Resource, Res, ResMut,
 	Component, Bundle,
-	Color,
-	// Entity,
-	// Query,
 	Commands,
+	Color,
+	Vec2, Vec3, Vec4,
 };
-use crate::component_utils::{
-	PreserveOnClear,
-};
-use crate::color_utils::{
-	ColorScheme,
-};
+use bevy::transform;
+use bevy::transform::components::Transform;
+use bevy_vector_shapes::prelude::*;
+
+use crate::component_utils::*;
+use crate::color_utils::*;
 
 // =============================================================================
 // Components/bundle/utilities for the messages logged above the typing area.
@@ -68,6 +67,7 @@ struct SentMessageBundle {
 	is_mine: IsMine,
 	side: Side,
 	index: Index,
+	transform: Transform,
 }
 
 // Utility function to spawn a message based on text content, sender/owner, and whether to preserve on conversation reset.
@@ -78,19 +78,38 @@ pub fn spawn_sent_message(
 	text: &'static str,
 	is_mine: bool,
 	preserve_on_clear: bool,
+	transform: Option<Transform>,
 ) {
-	let bundle = SentMessageBundle {
+	let transform = if let Some(transform) = transform { transform } else { Transform::from_xyz(0., 0., 0.) };
+
+	let msg_bundle = SentMessageBundle {
 		text: MsgText(String::from(text)),
 		font_color: FontColor(if is_mine { color_scheme.my_text_color } else { color_scheme.their_text_color }),
 		bkg_color: BkgColor(if is_mine { color_scheme.my_bubble_color } else { color_scheme.their_bubble_color },),
 		is_mine: IsMine(is_mine),
 		side: Side(if is_mine { HDir::RIGHT } else { HDir::LEFT }),
 		index: Index(next_index.0),
+		transform: transform,
 	};
-	println!("\nspawn_sent_message():{}", bundle);
-	let mut id = commands.spawn(bundle);
+
+	let shape_bundle = ShapeBundle::rect(
+		&ShapeConfig {
+			color: BLUE_BUBBLE_COLOR,
+			corner_radii: Vec4::splat(40.),
+			// transform: Transform::from_xyz(0., 0., 0.),
+			..ShapeConfig::default_2d()
+		},
+		Vec2::new(600., 80.),
+	);
+
+	println!("\nspawn_sent_message():{}", msg_bundle);
+	// let mut entity_commands = commands.spawn(msg_bundle);
+	let mut entity_commands = commands.spawn(msg_bundle);
+	
+	entity_commands.with_child(shape_bundle);
+
 	if preserve_on_clear {
-		id.insert(PreserveOnClear);
+		entity_commands.insert(PreserveOnClear);
 	}
 	next_index.0 += 1;
 }
