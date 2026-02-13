@@ -1,4 +1,15 @@
 /target
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
 .cargo/config.toml
+
+# Reference files I don't care to add to the repo
 /assets/ref/
+
+# Vim temporary files
 *~
+
+# Logs
+*.log
