@@ -1,8 +1,8 @@
 use bevy::prelude::{
-	Component,
-	Entity,
-	Query,
-	Commands,
+		Component,
+		Entity,
+		Query,
+		Commands,
 };
 
 // =============================================================================

@@ -3,7 +3,6 @@
 // =============================================================================
 
 // use std::fmt;
-
 use bevy::{
 	prelude::*,
 	window::WindowResolution,
@@ -17,12 +16,16 @@ use bevy_vector_shapes::Shape2dPlugin;
 // =============================================================================
 
 mod window_utils;
+mod cleanup;
 mod component_utils;
+mod app_state;
 mod sent_message;
 mod color_utils;
 
 use window_utils::*;
+use cleanup::*;
 use component_utils::*;
+use app_state::*;
 use sent_message::*;
 use color_utils::*;
 
@@ -119,7 +122,40 @@ fn main() {
 	;
 
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// Add systems.
+	// Init and add systems for app states (and transistions there-betwixt).
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	app.init_state::<AppState>();
+
+	// app.add_systems(OnExit(AppState::Splash), (do_something, cleanup_system::<Cleanup<Splash>>).chain());
+	app.add_systems(OnExit(AppState::Splash), cleanup_system::<Cleanup<Splash>>);
+	// app.add_systems(OnTransition(AppState::Splash), some_transition_system);
+	// app.add_systems(OnTransition(AppState::Splash), some_transition_system);
+	// app.add_systems(OnEnter(AppState::Splash), enter_system::<Enter<Splash>>);
+
+	app.add_systems(OnExit(AppState::MainMenu), cleanup_system::<Cleanup<MainMenu>>);
+	// app.add_systems(OnTransition(AppState::MainMenu), some_transition_system);
+	// app.add_systems(OnEnter(AppState::MainMenu), enter_system::<Enter<MainMenu>>);
+
+	app.add_systems(OnExit(AppState::InGame), cleanup_system::<Cleanup<InGame>>);
+	// app.add_systems(OnTransition(AppState::InGame), some_transition_system);
+	// app.add_systems(OnEnter(AppState::InGame), enter_system::<Enter<InGame>>);
+
+	app.add_systems(OnExit(AppState::PauseMenu), cleanup_system::<Cleanup<PauseMenu>>);
+	// app.add_systems(OnTransition(AppState::PauseMenu), some_transition_system);
+	// app.add_systems(OnEnter(AppState::PauseMenu), enter_system::<Enter<PauseMenu>>);
+
+	app.add_systems(OnExit(AppState::Won), cleanup_system::<Cleanup<Won>>);
+	// app.add_systems(OnTransition(AppState::Won), some_transition_system);
+	// app.add_systems(OnEnter(AppState::Won), enter_system::<Enter<Won>>);
+
+	// To transition to a new state, pass the NextState resource (as mutable):
+	// mut next_state: ResMut<NextState<AppState>>,
+	// and in the system body, call e.g:
+	// next_state.set(AppState::MainMenu);
+
+	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Add main loop systems.
 	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	// TODO: audit each use of chain() and other ordering/conditionality for necessity.
@@ -128,7 +164,7 @@ fn main() {
 	// PreStartup, Startup, PostStartup: these run once, on app launch.
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	app.add_systems(PreStartup, pre_startup);
+	app.add_systems(PreStartup, (register_quit_cleanup_system, pre_startup).chain());
 	app.add_systems(Startup, startup);
 	app.add_systems(PostStartup, (init_window_resolution_scale_factor, post_startup).chain());
 
@@ -226,7 +262,7 @@ fn main() {
 
 	app.add_systems(PostUpdate, (
 		post_update,
-		despawn_doomed_targets
+		despawn_doomed_targets,
 	));
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -250,7 +286,8 @@ fn main() {
 
 // ### Once: ###
 
-fn pre_startup() {}
+fn pre_startup() {
+}
 
 fn startup(
 	mut commands: Commands,
@@ -259,8 +296,15 @@ fn startup(
 	color_scheme: Res<ColorScheme>,
 ) {
 	commands.spawn((
+		Name::new("SplashCamera"),
+		Cleanup::<Splash>::new(),
 		Camera2d::default(),
 		Msaa::Off,
+	));
+
+	commands.spawn((
+		Name::new("MusicPlayer"),
+		Cleanup::<MainMenu>::new(),	// TODO: change this is the music should persist through to the InGame app state.
 		AudioPlayer::new(asset_server.load("audio/music/chillopen.ogg")),
 		PlaybackSettings::LOOP,
 	));
@@ -304,8 +348,27 @@ fn fixed_update() {}
 fn fixed_post_update() {}
 fn fixed_last() {}
 
-fn update() {}
-fn post_update() {}
+fn update(
+	keyboard_input: Res<ButtonInput<KeyCode>>,
+	mut exit: MessageWriter<AppExit>,
+) {
+	if keyboard_input.just_pressed(KeyCode::Escape) {
+        // Request to exit program.
+		exit.write(AppExit::Success);
+    }
+}
+
+fn post_update(
+	mut commands: Commands,
+	mut exit_messages: MessageReader<AppExit>,
+	quit_cleanup_system_id: Res<QuitCleanupSystemId>,
+) {
+	for _msg in exit_messages.read() {
+		// Program exit requested. Run pre-quit cleanup.
+		commands.run_system(quit_cleanup_system_id.0);
+		break;
+	}
+}
 
 fn last() {}
 

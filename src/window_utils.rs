@@ -63,15 +63,15 @@ pub fn on_window_resized(
 	window_scaling: Res<WindowScaling>,
 ) {
 	if window_awaits_centering.0 {
-		for e in resize_reader.read() {
+		for msg in resize_reader.read() {
 			window_awaits_centering.0 = false;
 
 			let monitor_width = monitor.physical_width as i32;
 			let monitor_height = monitor.physical_height as i32;
 			let monitor_offset = monitor.physical_position;
 
-			let window_width = (e.width * window_scaling.1) as i32;
-			let window_height = (e.height * window_scaling.1) as i32;
+			let window_width = (msg.width * window_scaling.1) as i32;
+			let window_height = (msg.height * window_scaling.1) as i32;
 
 			let pos_x = monitor_offset.x + (monitor_width - window_width) / 2;
 			let pos_y = monitor_offset.y + (monitor_height - window_height) / 2;

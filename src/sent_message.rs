@@ -10,7 +10,7 @@ use bevy::transform;
 use bevy::transform::components::Transform;
 use bevy_vector_shapes::prelude::*;
 
-use crate::component_utils::*;
+use crate::{VIRTUAL_RESOLUTION, component_utils::*};
 use crate::color_utils::*;
 
 // =============================================================================
@@ -78,9 +78,40 @@ pub fn spawn_sent_message(
 	text: &'static str,
 	is_mine: bool,
 	preserve_on_clear: bool,
-	transform: Option<Transform>,
+	transform_override: Option<Transform>,
 ) {
-	let transform = if let Some(transform) = transform { transform } else { Transform::from_xyz(0., 0., 0.) };
+	// TODO: determine width & height based on text, font.
+	let bub_w = 400.;
+	let bub_h = 60.;
+
+	let transform = if let Some(transform_override) = transform_override {
+		transform_override
+	} else {
+		// TODO: place at default y position + offset based on height.
+		// TODO: calculate x position based on Side & width.
+
+		// x:
+		// 0 is screen center.
+		// A message on the left has its left edge at, say, gutter_offset;
+		// Component transform/position uses a centered origin, so on left:
+		// bub_x = gutter_offset + bub_w / 2
+		// A message on the right has its right edge at VIRTUAL_RESOLUTION.x - gutter_offset.
+		// (Actually should be virtual_resolution.x, not VIRTUAL_RESOLUTION as this is a const / the default.)
+		// bub_x = res.x - gutter_offset - bub_w / 2
+
+		// TODO (maybe): this should instead grab actual virtual screen resolution, not default -
+		// if we allow virtual resolution to change, that is.
+		// In any case, might be better to pass (virtual) resolution around as a Resource.
+		let res_x = VIRTUAL_RESOLUTION.x as f32;
+		let gutter_offset = 10.;
+
+		let bub_x = if is_mine { res_x - gutter_offset - bub_w * 0.5 } else { gutter_offset + bub_w * 0.5 };
+		println!("is_mine: {is_mine}, bub_x: {bub_x}");
+		let bub_y = 0.0;
+		
+		// TODO: adjust existing messages accordingly. Maybe via event.
+		Transform::from_xyz(bub_x, bub_y, 0.)
+	};
 
 	let msg_bundle = SentMessageBundle {
 		text: MsgText(String::from(text)),
@@ -99,7 +130,7 @@ pub fn spawn_sent_message(
 			// transform: Transform::from_xyz(0., 0., 0.),
 			..ShapeConfig::default_2d()
 		},
-		Vec2::new(600., 80.),
+		Vec2::new(bub_w, bub_h),
 	);
 
 	println!("\nspawn_sent_message():{}", msg_bundle);
