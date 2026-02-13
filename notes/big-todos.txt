@@ -1,0 +1,8 @@
+- add Name and cleanup components to all spawned entities
+- consider converting spawn_sent_message and any other functions called from systems,
+	to systems themselves that are called via commands.run_system() using their id
+	(remember to register system in app config, like was done with quit_cleanup_system)
+- transition between states (example line at bopttom of state transition systems registration)
+- create fmod project and get music playing via that
+	- add a sound effect for key tap and trigger it
+		- parameterize
